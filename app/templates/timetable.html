@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+{% block title %}Timetable - SRMS{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-2 sidebar p-0">
+            <div class="p-3 text-center border-bottom border-secondary">
+                <h5 class="text-white" id="userName">Loading...</h5>
+                <small class="text-white-50" id="userRole">-</small>
+            </div>
+            <a href="/dashboard"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a>
+            <a href="/admin/students" id="navStudents" style="display:none;"><i class="bi bi-people me-2"></i> Students</a>
+            <a href="/admin/classes" id="navClasses" style="display:none;"><i class="bi bi-grid me-2"></i> Classes</a>
+            <a href="/admin/subjects" id="navSubjects" style="display:none;"><i class="bi bi-book me-2"></i> Subjects</a>
+            <a href="/admin/exams" id="navExams" style="display:none;"><i class="bi bi-clipboard me-2"></i> Exams</a>
+            <a href="/teacher/marks" id="navMarks" style="display:none;"><i class="bi bi-pencil-square me-2"></i> Enter Marks</a>
+            <a href="/teacher/attendance" id="navAttendance" style="display:none;"><i class="bi bi-calendar-check me-2"></i> Attendance</a>
+            <a href="/teacher/materials" id="navMaterials" style="display:none;"><i class="bi bi-file-earmark-arrow-up me-2"></i> Materials</a>
+            <a href="/teacher/timetable" id="navTimetable" class="active" style="display:none;"><i class="bi bi-calendar3 me-2"></i> Timetable</a>
+            <a href="/results"><i class="bi bi-bar-chart me-2"></i> Results</a>
+            <a href="/" onclick="localStorage.removeItem('token');localStorage.removeItem('user');"><i class="bi bi-box-arrow-right me-2"></i> Logout</a>
+        </div>
+        <div class="col-md-10 p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Class Timetable</h2>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#timetableModal">
+                    <i class="bi bi-plus-lg me-2"></i>Add Schedule
+                </button>
+            </div>
+
+            <div class="card p-4 mb-4">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Select Class</label>
+                        <select class="form-select" id="classFilter" onchange="loadTimetable()">
+                            <option value="">-- Choose Class --</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-4">
+                <div class="table-responsive">
+                    <table class="table table-bordered text-center" id="timetableDisplay">
+                        <thead class="bg-light">
+                            <tr>
+                                <th>Time / Day</th>
+                                <th>Monday</th>
+                                <th>Tuesday</th>
+                                <th>Wednesday</th>
+                                <th>Thursday</th>
+                                <th>Friday</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Timetable will be dynamically generated -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Timetable Modal -->
+<div class="modal fade" id="timetableModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Schedule Entry</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="timetableForm">
+                    <div class="mb-3">
+                        <label class="form-label">Class</label>
+                        <select class="form-select" id="entryClass" onchange="loadClassSubjects()" required></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Subject</label>
+                        <select class="form-select" id="entrySubject" required>
+                            <option value="">-- Select Class First --</option>
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Day</label>
+                            <select class="form-select" id="entryDay" required>
+                                <option>Monday</option>
+                                <option>Tuesday</option>
+                                <option>Wednesday</option>
+                                <option>Thursday</option>
+                                <option>Friday</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Room</label>
+                            <input type="text" class="form-control" id="entryRoom" placeholder="e.g., Room 101">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Start Time</label>
+                            <input type="time" class="form-control" id="entryStart" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">End Time</label>
+                            <input type="time" class="form-control" id="entryEnd" required>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitTimetable()">Save Entry</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const token = localStorage.getItem('token');
+const user = JSON.parse(localStorage.getItem('user') || '{}');
+if (!token) window.location.href = '/login';
+
+document.getElementById('userName').textContent = user.full_name;
+document.getElementById('userRole').textContent = user.role.toUpperCase();
+
+const roles = ['admin', 'teacher'];
+roles.forEach(r => {
+    if (user.role === 'admin' || user.role === r) {
+        if (r === 'admin') {
+            ['navStudents', 'navClasses', 'navSubjects', 'navExams'].forEach(id => document.getElementById(id).style.display = 'block');
+        }
+        document.getElementById('navMarks').style.display = 'block';
+        document.getElementById('navAttendance').style.display = 'block';
+        document.getElementById('navMaterials').style.display = 'block';
+        document.getElementById('navTimetable').style.display = 'block';
+    }
+});
+
+const api = axios.create({ baseURL: '', headers: { Authorization: `Bearer ${token}` } });
+let allSubjects = [];
+
+async function init() {
+    try {
+        const [classesRes, subjectsRes] = await Promise.all([
+            api.get('/api/classes'),
+            api.get('/api/subjects')
+        ]);
+        allSubjects = subjectsRes.data;
+        
+        const filter = document.getElementById('classFilter');
+        const entryClass = document.getElementById('entryClass');
+        classesRes.data.forEach(c => {
+            const opt = `<option value="${c.id}">${c.class_name} (${c.year})</option>`;
+            filter.innerHTML += opt;
+            entryClass.innerHTML += opt;
+        });
+        loadClassSubjects();
+    } catch (err) { console.error(err); }
+}
+
+function loadClassSubjects() {
+    const classId = document.getElementById('entryClass').value;
+    const select = document.getElementById('entrySubject');
+    select.innerHTML = '<option value="">-- Select Subject --</option>';
+    
+    allSubjects.filter(s => s.class_id == classId).forEach(s => {
+        select.innerHTML += `<option value="${s.id}">${s.subject_name}</option>`;
+    });
+}
+
+async function loadTimetable() {
+    const classId = document.getElementById('classFilter').value;
+    const tbody = document.querySelector('#timetableDisplay tbody');
+    tbody.innerHTML = '';
+    if (!classId) return;
+
+    try {
+        const res = await api.get(`/api/teacher/timetable/class/${classId}`);
+        const data = res.data;
+        
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        // This is a simplified display. In a real app, you'd want to sort by time.
+        // Let's group by start_time to create rows.
+        const timeSlots = [...new Set(data.map(t => t.start_time))].sort();
+        
+        if (timeSlots.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="p-5 text-muted">No schedule defined for this class.</td></tr>';
+            return;
+        }
+
+        timeSlots.forEach(time => {
+            let row = `<tr><td class="bg-light fw-bold">${time}</td>`;
+            days.forEach(day => {
+                const entry = data.find(t => t.day_of_week === day && t.start_time === time);
+                if (entry) {
+                    const subject = allSubjects.find(s => s.id === entry.subject_id);
+                    row += `
+                        <td class="p-3">
+                            <div class="p-2 border rounded bg-primary-subtle position-relative">
+                                <strong>${subject ? subject.subject_name : 'Subject'}</strong><br>
+                                <small>${entry.start_time} - ${entry.end_time}</small><br>
+                                <small class="text-muted">${entry.room || ''}</small>
+                                <button class="btn btn-sm text-danger position-absolute top-0 end-0" onclick="deleteEntry(${entry.id})">&times;</button>
+                            </div>
+                        </td>
+                    `;
+                } else {
+                    row += '<td></td>';
+                }
+            });
+            row += '</tr>';
+            tbody.innerHTML += row;
+        });
+    } catch (err) { console.error(err); }
+}
+
+async function submitTimetable() {
+    const data = {
+        class_id: parseInt(document.getElementById('entryClass').value),
+        subject_id: parseInt(document.getElementById('entrySubject').value),
+        day_of_week: document.getElementById('entryDay').value,
+        start_time: document.getElementById('entryStart').value,
+        end_time: document.getElementById('entryEnd').value,
+        room: document.getElementById('entryRoom').value
+    };
+
+    try {
+        await api.post('/api/teacher/timetable', data);
+        bootstrap.Modal.getInstance(document.getElementById('timetableModal')).hide();
+        loadTimetable();
+    } catch (err) { 
+        alert("Error saving schedule");
+        console.error(err);
+    }
+}
+
+async function deleteEntry(id) {
+    if (confirm("Delete this schedule entry?")) {
+        try {
+            await api.delete(`/api/teacher/timetable/${id}`);
+            loadTimetable();
+        } catch (err) { console.error(err); }
+    }
+}
+
+init();
+</script>
+{% endblock %}

@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Enter Marks - SRMS{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-2 sidebar p-0">
+            <div class="p-3 text-center border-bottom border-secondary">
+                <h5 class="text-white" id="userName">Loading...</h5>
+                <small class="text-white-50" id="userRole">-</small>
+            </div>
+            <a href="/dashboard"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a>
+            <a href="/admin/students" id="navStudents"><i class="bi bi-people me-2"></i> Students</a>
+            <a href="/admin/classes" id="navClasses"><i class="bi bi-grid me-2"></i> Classes</a>
+            <a href="/admin/subjects" id="navSubjects"><i class="bi bi-book me-2"></i> Subjects</a>
+            <a href="/admin/exams" id="navExams"><i class="bi bi-clipboard me-2"></i> Exams</a>
+            <a href="/teacher/marks" class="active"><i class="bi bi-pencil-square me-2"></i> Enter Marks</a>
+            <a href="/results"><i class="bi bi-bar-chart me-2"></i> Results</a>
+            <a href="/" onclick="localStorage.removeItem('token');localStorage.removeItem('user');"><i class="bi bi-box-arrow-right me-2"></i> Logout</a>
+        </div>
+        <div class="col-md-10 p-4">
+            <h2 class="mb-4">Enter Marks</h2>
+            <div class="card p-4 mb-4">
+                <div class="row">
+                    <div class="col-md-3">
+                        <label>Class</label>
+                        <select class="form-control" id="classSelect"></select>
+                    </div>
+                    <div class="col-md-3">
+                        <label>Exam</label>
+                        <select class="form-control" id="examSelect"></select>
+                    </div>
+                    <div class="col-md-3">
+                        <label>Subject</label>
+                        <select class="form-control" id="subjectSelect"></select>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button class="btn btn-primary w-100" onclick="loadMarksSheet()">Load Students</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card p-4" id="marksSheet" style="display:none;">
+                <h5>Marks Entry</h5>
+                <table class="table" id="marksTable">
+                    <thead><tr><th>Student ID</th><th>Name</th><th>Marks</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+                <button class="btn btn-success" onclick="saveMarks()">Save Marks</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const token = localStorage.getItem('token');
+const user = JSON.parse(localStorage.getItem('user') || '{}');
+if (!token || !user.role || (user.role !== 'admin' && user.role !== 'teacher')) {
+    window.location.href = '/dashboard';
+}
+document.getElementById('userName').textContent = user.full_name || 'User';
+document.getElementById('userRole').textContent = (user.role || '').toUpperCase();
+
+if (user.role === 'admin') {
+    document.getElementById('navStudents').style.display = 'block';
+    document.getElementById('navClasses').style.display = 'block';
+    document.getElementById('navSubjects').style.display = 'block';
+    document.getElementById('navExams').style.display = 'block';
+}
+
+const api = axios.create({ baseURL: '', headers: { Authorization: `Bearer ${token}` } });
+
+let currentExamId, currentSubjectId;
+
+async function init() {
+    const [classes, exams, subjects] = await Promise.all([api.get('/api/classes'), api.get('/api/exams'), api.get('/api/subjects')]);
+    document.getElementById('classSelect').innerHTML = classes.data.map(c => `<option value="${c.id}">${c.class_name}</option>`).join('');
+    document.getElementById('examSelect').innerHTML = exams.data.map(e => `<option value="${e.id}">${e.exam_name}</option>`).join('');
+    document.getElementById('subjectSelect').innerHTML = subjects.data.map(s => `<option value="${s.id}">${s.subject_name}</option>`).join('');
+}
+
+async function loadMarksSheet() {
+    const classId = document.getElementById('classSelect').value;
+    currentExamId = document.getElementById('examSelect').value;
+    currentSubjectId = document.getElementById('subjectSelect').value;
+    
+    const students = await api.get('/api/students');
+    const classStudents = students.data.filter(s => s.class_id == classId);
+    
+    const existingMarks = await api.get(`/api/marks?exam_id=${currentExamId}&subject_id=${currentSubjectId}`);
+    const markMap = {};
+    existingMarks.data.forEach(m => markMap[m.student_id] = m.marks);
+    
+    document.querySelector('#marksTable tbody').innerHTML = classStudents.map(s => `<tr>
+        <td>${s.student_id}</td><td>${s.name}</td>
+        <td><input type="number" class="form-control marks-input" data-student-id="${s.id}" value="${markMap[s.id] || ''}" min="0" max="100"></td>
+    </tr>`).join('');
+    document.getElementById('marksSheet').style.display = 'block';
+}
+
+async function saveMarks() {
+    const inputs = document.querySelectorAll('.marks-input');
+    const marks = [];
+    inputs.forEach(input => {
+        if (input.value) {
+            marks.push({
+                student_id: parseInt(input.dataset.studentId),
+                subject_id: parseInt(currentSubjectId),
+                exam_id: parseInt(currentExamId),
+                marks: parseFloat(input.value)
+            });
+        }
+    });
+    await api.post('/api/marks/bulk', marks);
+    alert('Marks saved successfully!');
+}
+init();
+</script>
+{% endblock %}
