@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from app.core.database import engine, SessionLocal
 from app.models import user, student, academic
 from app.api import auth, students, classes, subjects, exams, marks, results, teacher
@@ -31,8 +32,12 @@ async def lifespan(app: FastAPI):
                 student.Class(class_name=f"Grade {i}", year=2024) for i in range(6, 11)
             ]
             db.add_all(classes_list)
-            db.commit()
-            print("Auto-seeding complete.")
+            try:
+                db.commit()
+                print("Auto-seeding complete.")
+            except IntegrityError:
+                db.rollback()
+                print("Auto-seeding skipped: another worker already seeded the database.")
     finally:
         db.close()
     yield
