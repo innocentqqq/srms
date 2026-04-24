@@ -7,14 +7,61 @@ from app.models.user import User, Teacher
 from app.models.student import Student, Class
 from app.models.academic import Subject, SubjectAssignment, Attendance, Announcement, Material, Timetable
 from app.schemas import (
-    AttendanceCreate, AttendanceResponse,
-    AnnouncementCreate, AnnouncementResponse,
-    MaterialCreate, MaterialResponse,
-    TimetableCreate, TimetableResponse,
-    ClassResponse, SubjectResponse
+    AttendanceCreate,
+    AttendanceResponse,
+    AnnouncementCreate,
+    AnnouncementResponse,
+    MaterialCreate,
+    MaterialResponse,
+    TimetableCreate,
+    TimetableResponse,
+    ClassResponse,
+    SubjectResponse,
+    TeacherResponse,
 )
 
 router = APIRouter()
+
+
+@router.get("/teachers", response_model=List[TeacherResponse])
+def get_teachers(
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+    teachers = db.query(Teacher).all()
+    results = []
+    for t in teachers:
+        results.append(
+            TeacherResponse(
+                id=t.id,
+                teacher_id=t.teacher_id,
+                full_name=t.user.full_name if t.user else "Unknown",
+                email=t.user.email if t.user else "Unknown",
+                phone=t.phone,
+            )
+        )
+    return results
+
+
+@router.delete("/teachers/{teacher_id}")
+def delete_teacher(
+    teacher_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+    teacher = db.query(Teacher).filter(Teacher.id == teacher_id).first()
+    if not teacher:
+        raise HTTPException(status_code=404, detail="Teacher not found")
+    user = teacher.user
+    db.delete(teacher)
+    if user:
+        db.delete(user)
+    db.commit()
+    return {"message": "Teacher and associated user account deleted"}
+
 
 # FR-T09: Teacher shall be able to view assigned classes.
 # FR-T10: Teacher shall be able to view assigned subjects/courses.

@@ -9,6 +9,7 @@
                 <small class="text-white-50" id="userRole">-</small>
             </div>
             <a href="/dashboard" class="active"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a>
+            <a href="/admin/teachers" id="navTeachers" style="display:none;"><i class="bi bi-person-badge me-2"></i> Teachers</a>
             <a href="/admin/students" id="navStudents" style="display:none;"><i class="bi bi-people me-2"></i> Students</a>
             <a href="/admin/classes" id="navClasses" style="display:none;"><i class="bi bi-grid me-2"></i> Classes</a>
             <a href="/admin/subjects" id="navSubjects" style="display:none;"><i class="bi bi-book me-2"></i> Subjects</a>
@@ -129,6 +130,7 @@ document.getElementById('userName').textContent = user.full_name || 'User';
 document.getElementById('userRole').textContent = (user.role || '').toUpperCase();
 
 if (user.role === 'admin') {
+    document.getElementById('navTeachers').style.display = 'block';
     document.getElementById('navStudents').style.display = 'block';
     document.getElementById('navClasses').style.display = 'block';
     document.getElementById('navSubjects').style.display = 'block';

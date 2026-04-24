@@ -32,6 +32,11 @@ def admin_students(request: Request):
     return templates.TemplateResponse(request, "students.html")
 
 
+@router.get("/admin/teachers", response_class=HTMLResponse)
+def admin_teachers(request: Request):
+    return templates.TemplateResponse(request, "teachers.html")
+
+
 @router.get("/admin/classes", response_class=HTMLResponse)
 def admin_classes(request: Request):
     return templates.TemplateResponse(request, "classes.html")

@@ -16,6 +16,9 @@ from app.schemas import (
     StudentCreate,
     StudentResponse,
     StudentUpdate,
+    StudentAccountCreate,
+    TeacherAccountCreate,
+    TeacherResponse,
     ClassCreate,
     ClassResponse,
     SubjectCreate,
@@ -98,6 +101,130 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         db.add(teacher)
         db.commit()
     return db_user
+
+
+@router.post("/admin/create-teacher", response_model=TeacherResponse)
+def create_teacher_account(
+    teacher_data: TeacherAccountCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=403, detail="Only admins can create teacher accounts"
+        )
+
+    # Check if username or email already exists
+    if (
+        db.query(User)
+        .filter(
+            (User.username == teacher_data.username)
+            | (User.email == teacher_data.email)
+        )
+        .first()
+    ):
+        raise HTTPException(
+            status_code=400, detail="Username or Email already registered"
+        )
+
+    # Check if teacher_id already exists
+    if (
+        db.query(Teacher)
+        .filter(Teacher.teacher_id == teacher_data.teacher_id)
+        .first()
+    ):
+        raise HTTPException(status_code=400, detail="Teacher ID already exists")
+
+    hashed_password = hash_password(teacher_data.password)
+    db_user = User(
+        email=teacher_data.email,
+        username=teacher_data.username,
+        hashed_password=hashed_password,
+        full_name=teacher_data.full_name,
+        role="teacher",
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+
+    db_teacher = Teacher(
+        user_id=db_user.id,
+        teacher_id=teacher_data.teacher_id,
+        phone=teacher_data.phone,
+    )
+    db.add(db_teacher)
+    db.commit()
+    db.refresh(db_teacher)
+
+    return TeacherResponse(
+        id=db_teacher.id,
+        teacher_id=db_teacher.teacher_id,
+        full_name=db_user.full_name,
+        email=db_user.email,
+        phone=db_teacher.phone,
+    )
+
+
+@router.post("/admin/create-student", response_model=StudentResponse)
+def create_student_account(
+    student_data: StudentAccountCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=403, detail="Only admins can create student accounts"
+        )
+
+    # Check if username or email already exists
+    if (
+        db.query(User)
+        .filter(
+            (User.username == student_data.username)
+            | (User.email == student_data.email)
+        )
+        .first()
+    ):
+        raise HTTPException(
+            status_code=400, detail="Username or Email already registered"
+        )
+
+    # Check if student_id already exists
+    if (
+        db.query(Student)
+        .filter(Student.student_id == student_data.student_id)
+        .first()
+    ):
+        raise HTTPException(status_code=400, detail="Student ID already exists")
+
+    hashed_password = hash_password(student_data.password)
+    db_user = User(
+        email=student_data.email,
+        username=student_data.username,
+        hashed_password=hashed_password,
+        full_name=student_data.name,
+        role="student",
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+
+    db_student = Student(
+        user_id=db_user.id,
+        student_id=student_data.student_id,
+        name=student_data.name,
+        dob=student_data.dob,
+        class_id=student_data.class_id,
+        parent_name=student_data.parent_name,
+        phone=student_data.phone,
+        address=student_data.address,
+        created_at=int(time.time()),
+    )
+    db.add(db_student)
+    db.commit()
+    db.refresh(db_student)
+
+    return db_student
 
 
 @router.post("/login", response_model=Token)

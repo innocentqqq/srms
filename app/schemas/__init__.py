@@ -46,6 +46,12 @@ class StudentCreate(StudentBase):
     pass
 
 
+class StudentAccountCreate(StudentCreate):
+    password: str
+    username: str
+    email: str
+
+
 class StudentUpdate(BaseModel):
     name: Optional[str] = None
     dob: Optional[date] = None
@@ -56,6 +62,29 @@ class StudentUpdate(BaseModel):
 
 
 class StudentResponse(StudentBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+
+class TeacherBase(BaseModel):
+    teacher_id: str
+    full_name: str
+    email: str
+    phone: Optional[str] = None
+
+
+class TeacherCreate(TeacherBase):
+    pass
+
+
+class TeacherAccountCreate(TeacherCreate):
+    password: str
+    username: str
+
+
+class TeacherResponse(TeacherBase):
     id: int
 
     class Config:
