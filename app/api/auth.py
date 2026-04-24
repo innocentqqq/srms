@@ -5,7 +5,7 @@ import bcrypt
 from datetime import datetime, timedelta, date
 from jose import JWTError, jwt
 from app.core.database import SessionLocal, Base, engine
-from app.models.user import User, Teacher
+from app.models.user import User, Teacher, UserRole
 from app.models.student import Student, Class
 from app.models.academic import Subject, Exam, Mark
 from app.schemas import (
