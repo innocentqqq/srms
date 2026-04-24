@@ -9,12 +9,15 @@
                 <small class="text-white-50" id="userRole">-</small>
             </div>
             <a href="/dashboard"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a>
-            <a href="/admin/teachers"><i class="bi bi-person-badge me-2"></i> Teachers</a>
-            <a href="/admin/students" id="navStudents"><i class="bi bi-people me-2"></i> Students</a>
-            <a href="/admin/classes" id="navClasses"><i class="bi bi-grid me-2"></i> Classes</a>
-            <a href="/admin/subjects" class="active"><i class="bi bi-book me-2"></i> Subjects</a>
-            <a href="/admin/exams" id="navExams"><i class="bi bi-clipboard me-2"></i> Exams</a>
-            <a href="/teacher/marks" id="navMarks"><i class="bi bi-pencil-square me-2"></i> Enter Marks</a>
+            <a href="/admin/teachers" id="navTeachers" style="display:none;"><i class="bi bi-person-badge me-2"></i> Teachers</a>
+            <a href="/admin/students" id="navStudents" style="display:none;"><i class="bi bi-people me-2"></i> Students</a>
+            <a href="/admin/classes" id="navClasses" style="display:none;"><i class="bi bi-grid me-2"></i> Classes</a>
+            <a href="/admin/subjects" class="active" id="navSubjects" style="display:none;"><i class="bi bi-book me-2"></i> Subjects</a>
+            <a href="/admin/exams" id="navExams" style="display:none;"><i class="bi bi-clipboard me-2"></i> Exams</a>
+            <a href="/teacher/marks" id="navMarks" style="display:none;"><i class="bi bi-pencil-square me-2"></i> Enter Marks</a>
+            <a href="/teacher/attendance" id="navAttendance" style="display:none;"><i class="bi bi-calendar-check me-2"></i> Attendance</a>
+            <a href="/teacher/materials" id="navMaterials" style="display:none;"><i class="bi bi-file-earmark-arrow-up me-2"></i> Materials</a>
+            <a href="/teacher/timetable" id="navTimetable" style="display:none;"><i class="bi bi-calendar3 me-2"></i> Timetable</a>
             <a href="/results"><i class="bi bi-bar-chart me-2"></i> Results</a>
             <a href="/" onclick="localStorage.removeItem('token');localStorage.removeItem('user');"><i class="bi bi-box-arrow-right me-2"></i> Logout</a>
         </div>
@@ -36,8 +39,8 @@
             <div class="modal-header"><h5 class="modal-title">Add Subject</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
             <form id="subjectForm">
                 <div class="modal-body">
-                    <div class="mb-3"><label>Subject Name</label><input type="text" class="form-control" name="subject_name" required></div>
-                    <div class="mb-3"><label>Class</label><select class="form-control" name="class_id" id="classSelect"></select></div>
+                    <div class="mb-2"><label>Subject Name</label><input type="text" class="form-control" name="subject_name" required></div>
+                    <div class="mb-2"><label>Class</label><select class="form-control" name="class_id" id="classSelect"></select></div>
                 </div>
                 <div class="modal-footer"><button type="submit" class="btn btn-primary">Save</button></div>
             </form>
@@ -56,12 +59,15 @@ document.getElementById('userName').textContent = user.full_name || 'User';
 document.getElementById('userRole').textContent = (user.role || '').toUpperCase();
 
 if (user.role === 'admin') {
+    document.getElementById('navTeachers').style.display = 'block';
     document.getElementById('navStudents').style.display = 'block';
     document.getElementById('navClasses').style.display = 'block';
+    document.getElementById('navSubjects').style.display = 'block';
     document.getElementById('navExams').style.display = 'block';
     document.getElementById('navMarks').style.display = 'block';
-} else if (user.role === 'teacher') {
-    document.getElementById('navMarks').style.display = 'block';
+    document.getElementById('navAttendance').style.display = 'block';
+    document.getElementById('navMaterials').style.display = 'block';
+    document.getElementById('navTimetable').style.display = 'block';
 }
 
 const api = axios.create({ baseURL: '', headers: { Authorization: `Bearer ${token}` } });
