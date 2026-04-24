@@ -8,10 +8,12 @@ from app.core.database import engine, SessionLocal
 from app.models import user, student, academic
 from app.api import auth, students, classes, subjects, exams, marks, results, teacher
 
-user.Base.metadata.create_all(bind=engine)
-student.Base.metadata.create_all(bind=engine)
-academic.Base.metadata.create_all(bind=engine)
-
+try:
+    user.Base.metadata.create_all(bind=engine)
+    student.Base.metadata.create_all(bind=engine)
+    academic.Base.metadata.create_all(bind=engine)
+except Exception as e:
+    print(f"Skipping initial table creation: {e}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -37,7 +39,12 @@ async def lifespan(app: FastAPI):
                 print("Auto-seeding complete.")
             except IntegrityError:
                 db.rollback()
-                print("Auto-seeding skipped: another worker already seeded the database.")
+                print("Auto-seeding skipped: already seeded.")
+            except Exception as e:
+                db.rollback()
+                print(f"Auto-seeding failed: {e}")
+    except Exception as e:
+        print(f"Lifespan seeding error: {e}")
     finally:
         db.close()
     yield
