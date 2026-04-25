@@ -9,7 +9,7 @@
                 <small class="text-white-50" id="userRole">-</small>
             </div>
             <a href="/dashboard"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a>
-            <a href="/admin/teachers" id="navTeachers" class="active" style="display:none;"><i class="bi bi-person-badge me-2"></i> Teachers</a>
+            <a href="/admin/teachers" class="active"><i class="bi bi-person-badge me-2"></i> Teachers</a>
             <a href="/admin/students" id="navStudents" style="display:none;"><i class="bi bi-people me-2"></i> Students</a>
             <a href="/admin/classes" id="navClasses" style="display:none;"><i class="bi bi-grid me-2"></i> Classes</a>
             <a href="/admin/subjects" id="navSubjects" style="display:none;"><i class="bi bi-book me-2"></i> Subjects</a>
@@ -36,6 +36,8 @@
         </div>
     </div>
 </div>
+
+<!-- Add Teacher Modal -->
 <div class="modal fade" id="teacherModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -54,30 +56,46 @@
         </div>
     </div>
 </div>
+
+<!-- Assign Subject Modal -->
+<div class="modal fade" id="assignModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5>Assign Teacher to Subject</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <input type="hidden" id="assignTeacherId">
+                <div class="mb-3">
+                    <label>Select Subject</label>
+                    <select class="form-control" id="subjectSelect"></select>
+                </div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-primary" onclick="submitAssignment()">Assign</button></div>
+        </div>
+    </div>
+</div>
 {% endblock %}
+
 {% block scripts %}
 <script>
 const token = localStorage.getItem('token');
 const user = JSON.parse(localStorage.getItem('user') || '{}');
-if (!token || !user.role || user.role !== 'admin') {
+
+if (!token || user.role !== 'admin') {
     window.location.href = '/dashboard';
 }
+
 document.getElementById('userName').textContent = user.full_name || 'User';
 document.getElementById('userRole').textContent = (user.role || '').toUpperCase();
 
-if (user.role === 'admin') {
-    document.getElementById('navTeachers').style.display = 'block';
-    document.getElementById('navStudents').style.display = 'block';
-    document.getElementById('navClasses').style.display = 'block';
-    document.getElementById('navSubjects').style.display = 'block';
-    document.getElementById('navExams').style.display = 'block';
-    document.getElementById('navMarks').style.display = 'block';
-    document.getElementById('navAttendance').style.display = 'block';
-    document.getElementById('navMaterials').style.display = 'block';
-    document.getElementById('navTimetable').style.display = 'block';
-} else if (user.role === 'teacher') {
-    document.getElementById('navMarks').style.display = 'block';
-}
+// Show Admin Sidebar Links
+document.getElementById('navStudents').style.display = 'block';
+document.getElementById('navClasses').style.display = 'block';
+document.getElementById('navSubjects').style.display = 'block';
+document.getElementById('navExams').style.display = 'block';
+document.getElementById('navMarks').style.display = 'block';
+document.getElementById('navAttendance').style.display = 'block';
+document.getElementById('navMaterials').style.display = 'block';
+document.getElementById('navTimetable').style.display = 'block';
 
 const api = axios.create({ baseURL: '', headers: { Authorization: `Bearer ${token}` } });
 
@@ -85,52 +103,38 @@ async function loadTeachers() {
     try {
         const res = await api.get('/api/teacher/teachers');
         const tbody = document.querySelector('#teachersTable tbody');
-        tbody.innerHTML = res.data.map(t => `<tr>
-            <td>${t.teacher_id}</td>
-            <td><a href="/admin/teacher/${t.id}" class="text-decoration-none">${t.full_name}</a></td>
-            <td>${t.email}</td><td>${t.phone || '-'}</td>
-            <td>
-                <button class="btn btn-sm btn-info text-white me-1" onclick="openAssignModal(${t.id})">Assign Subject</button>
-                <button class="btn btn-sm btn-danger" onclick="deleteTeacher(${t.id})">Delete</button>
-            </td>
-            ...
-            loadTeachers();
-
-            async function openAssignModal(teacherId) {
-            document.getElementById('teacherForm').insertAdjacentHTML('afterend', `
-            <div class="modal fade" id="assignModal" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header"><h5>Assign Teacher to Subject</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-                    <div class="modal-body">
-                        <input type="hidden" id="assignTeacherId" value="${teacherId}">
-                        <div class="mb-3">
-                            <label>Select Subject</label>
-                            <select class="form-control" id="subjectSelect"></select>
-                        </div>
-                    </div>
-                    <div class="modal-footer"><button class="btn btn-primary" onclick="submitAssignment()">Assign</button></div>
-                </div>
-            </div>
-            </div>
-            `);
-            const subjects = await api.get('/api/subjects');
-            document.getElementById('subjectSelect').innerHTML = subjects.data.map(s => `<option value="${s.id}">${s.subject_name}</option>`).join('');
-            new bootstrap.Modal(document.getElementById('assignModal')).show();
-            }
-
-            async function submitAssignment() {
-            const teacherId = document.getElementById('assignTeacherId').value;
-            const subjectId = document.getElementById('subjectSelect').value;
-            try {
-            await api.post(`/api/subjects/${subjectId}/assign-teacher/${teacherId}`);
-            alert("Assigned successfully!");
-            location.reload();
-            } catch (err) { alert("Error assigning teacher"); }
-            }
-
+        tbody.innerHTML = res.data.map(t => `
+            <tr>
+                <td>${t.teacher_id}</td>
+                <td><a href="/admin/teacher/${t.id}" class="text-decoration-none fw-bold">${t.full_name}</a></td>
+                <td>${t.email}</td>
+                <td>${t.phone || '-'}</td>
+                <td>
+                    <button class="btn btn-sm btn-info text-white me-1" onclick="openAssignModal(${t.id})">Assign</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteTeacher(${t.id})">Delete</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (e) {
         console.error(e);
     }
+}
+
+async function openAssignModal(teacherId) {
+    document.getElementById('assignTeacherId').value = teacherId;
+    const subjects = await api.get('/api/subjects');
+    document.getElementById('subjectSelect').innerHTML = subjects.data.map(s => `<option value="${s.id}">${s.subject_name}</option>`).join('');
+    new bootstrap.Modal(document.getElementById('assignModal')).show();
+}
+
+async function submitAssignment() {
+    const teacherId = document.getElementById('assignTeacherId').value;
+    const subjectId = document.getElementById('subjectSelect').value;
+    try {
+        await api.post(`/api/subjects/${subjectId}/assign-teacher/${teacherId}`);
+        alert("Assigned successfully!");
+        location.reload();
+    } catch (err) { alert("Error assigning teacher"); }
 }
 
 async function deleteTeacher(id) {
@@ -148,11 +152,20 @@ document.getElementById('teacherForm').addEventListener('submit', async (e) => {
     const formData = new FormData(e.target);
     const data = Object.fromEntries(formData);
     try {
-        await api.post('/api/admin/create-teacher', data);
-        alert('Teacher account created successfully');
+        // Correct endpoint for Admin to create teacher with full profile
+        await api.post('/api/admin/create-teacher', {
+            teacher_id: data.teacher_id,
+            username: data.username,
+            full_name: data.full_name,
+            email: data.email,
+            password: data.password,
+            phone: data.phone
+        });
+        
+        alert('Teacher account created successfully!');
         window.location.reload();
     } catch (e) {
-        alert(e.response?.data?.detail || 'Error creating teacher account');
+        alert(e.response?.data?.detail || 'Error creating teacher');
     }
 });
 

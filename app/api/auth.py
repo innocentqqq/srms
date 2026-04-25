@@ -5,7 +5,7 @@ import bcrypt
 from datetime import datetime, timedelta, date
 from jose import JWTError, jwt
 from app.core.database import SessionLocal, Base, engine
-from app.models.user import User, Teacher, UserRole
+from app.models.user import User, Teacher, UserRole, Parent
 from app.models.student import Student, Class
 from app.models.academic import Subject, Exam, Mark
 from app.schemas import (
@@ -18,6 +18,7 @@ from app.schemas import (
     StudentUpdate,
     StudentAccountCreate,
     TeacherAccountCreate,
+    ParentAccountCreate,
     TeacherResponse,
     ClassCreate,
     ClassResponse,
@@ -238,9 +239,51 @@ def login(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.get("/me", response_model=UserResponse)
-def get_me(current_user: User = Depends(get_current_user)):
-    return current_user
+@router.post("/admin/create-parent", response_model=UserResponse)
+def create_parent_account(
+    parent_data: ParentAccountCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    hashed_password = hash_password(parent_data.password)
+    db_user = User(
+        email=parent_data.email,
+        username=parent_data.username,
+        hashed_password=hashed_password,
+        full_name=parent_data.full_name,
+        role="parent",
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+
+    db_parent = Parent(
+        user_id=db_user.id,
+        phone=parent_data.phone,
+        address=parent_data.address
+    )
+    db.add(db_parent)
+    db.commit()
+    return db_user
+
+@router.post("/admin/link-parent-student/{parent_id}/{student_id}")
+def link_parent_student(parent_id: int, student_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    parent = db.query(Parent).filter(Parent.id == parent_id).first()
+    student = db.query(Student).filter(Student.id == student_id).first()
+    
+    if not parent or not student:
+        raise HTTPException(status_code=404, detail="Parent or Student not found")
+    
+    if parent not in student.parents:
+        student.parents.append(parent)
+        db.commit()
+    return {"message": "Linked successfully"}
 
 
 @router.get("/seed")

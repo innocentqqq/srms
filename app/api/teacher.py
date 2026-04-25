@@ -182,8 +182,11 @@ def create_material(material: dict, current_user: User = Depends(get_current_use
     return db_material
 
 @router.get("/materials/{subject_id}", response_model=List[MaterialResponse])
-def get_materials(subject_id: int, db: Session = Depends(get_db)):
-    return db.query(Material).filter(Material.subject_id == subject_id).all()
+def get_materials(subject_id: int, section_id: Optional[int] = None, db: Session = Depends(get_db)):
+    query = db.query(Material).filter(Material.subject_id == subject_id)
+    if section_id:
+        query = query.filter(Material.section_id == section_id)
+    return query.all()
 
 # FR-T37: Teacher shall be able to view teaching timetable.
 @router.get("/timetable", response_model=List[TimetableResponse])
@@ -269,8 +272,11 @@ def create_assignment(assignment: AssignmentCreate, current_user: User = Depends
     return db_assignment
 
 @router.get("/assignments/{subject_id}", response_model=List[AssignmentResponse])
-def get_assignments(subject_id: int, db: Session = Depends(get_db)):
-    return db.query(Assignment).filter(Assignment.subject_id == subject_id).all()
+def get_assignments(subject_id: int, section_id: Optional[int] = None, db: Session = Depends(get_db)):
+    query = db.query(Assignment).filter(Assignment.subject_id == subject_id)
+    if section_id:
+        query = query.filter(Assignment.section_id == section_id)
+    return query.all()
 
 # Grading
 @router.get("/submissions/{assignment_id}", response_model=List[SubmissionResponse])

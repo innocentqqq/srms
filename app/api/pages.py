@@ -96,6 +96,16 @@ def course_detail(request: Request, subject_id: int, db: Session = Depends(get_d
     return templates.TemplateResponse(request, "course_detail.html", {"subject": subject})
 
 
+@router.get("/parent/children", response_class=HTMLResponse)
+def parent_children_page(request: Request):
+    return templates.TemplateResponse(request, "parent_children.html")
+
+
+@router.get("/student/assignments", response_class=HTMLResponse)
+def student_assignments_page(request: Request):
+    return templates.TemplateResponse(request, "student_assignments.html")
+
+
 @router.get("/results", response_class=HTMLResponse)
 def results_page(request: Request):
     return templates.TemplateResponse(request, "results.html")
