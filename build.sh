@@ -3,13 +3,15 @@
 set -o errexit
 
 # Install dependencies
-# If poetry is used, it will handle it, otherwise use pip
-if [ -f pyproject.toml ]; then
-    poetry install
-else
-    pip install -r requirements.txt
+pip install -r requirements.txt
+
+# If we are on Render and the database has old tables, we might need to reset
+# You can remove the 'python reset_db.py' line after one successful deployment
+if [ "$RENDER" = "true" ]; then
+    echo "Running database reset check for Render..."
+    python reset_db.py
 fi
 
 # Run database migrations
-# We use the python path to ensure we use the environment's alembic
+echo "Running migrations..."
 python -m alembic upgrade head
