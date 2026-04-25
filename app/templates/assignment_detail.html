@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% block title %}{{ assignment.title }} - Assignment{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-2 sidebar p-0">
+            <div class="p-3 text-center border-bottom border-secondary">
+                <h5 class="text-white" id="userName">User</h5>
+                <small class="text-white-50" id="userRole">-</small>
+            </div>
+            <a href="/dashboard"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a>
+            <a href="/course/{{ subject.id }}"><i class="bi bi-arrow-left me-2"></i> Back to Course</a>
+            <a href="/" onclick="localStorage.removeItem('token');localStorage.removeItem('user');"><i class="bi bi-box-arrow-right me-2"></i> Logout</a>
+        </div>
+        <div class="col-md-10 p-4">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="/course/{{ subject.id }}">{{ subject.subject_name }}</a></li>
+                    <li class="breadcrumb-item active">{{ assignment.title }}</li>
+                </ol>
+            </nav>
+
+            <div class="card p-4 mb-4">
+                <h3>{{ assignment.title }}</h3>
+                <p class="text-muted">{{ assignment.description or 'No description provided.' }}</p>
+                <hr>
+                <div class="row">
+                    <div class="col-md-4">
+                        <p><strong>Due Date:</strong> {{ assignment.due_date.strftime('%Y-%m-%d %H:%M') }}</p>
+                        <p><strong>Max Score:</strong> {{ assignment.max_score }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TEACHER VIEW: SUBMISSIONS LIST -->
+            <div id="teacherView" style="display:none;">
+                <div class="card p-4 shadow-sm border-0">
+                    <h5 class="mb-4">Student Submissions</h5>
+                    <table class="table table-hover" id="submissionsTable">
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Submitted At</th>
+                                <th>Submission</th>
+                                <th>Grade</th>
+                                <th>Feedback</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="6" class="text-center">Loading submissions...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- STUDENT VIEW: MY SUBMISSION STATUS -->
+            <div id="studentView" style="display:none;">
+                <div class="card p-4 shadow-sm border-0">
+                    <h5>My Submission</h5>
+                    <div id="submissionStatus" class="alert alert-secondary mt-3">
+                        Checking status...
+                    </div>
+                    <form id="submissionForm" style="display:none;">
+                        <div class="mb-3">
+                            <label>Submission Link / Google Drive URL</label>
+                            <input type="text" class="form-control" name="file_path" placeholder="https://drive.google.com/..." required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Submit Assignment</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Grading Modal -->
+<div class="modal fade" id="gradingModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5>Grade Submission</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+            <form id="gradingForm">
+                <div class="modal-body">
+                    <input type="hidden" id="gradeSubmissionId" name="submission_id">
+                    <div class="mb-3">
+                        <label>Grade (Max: {{ assignment.max_score }})</label>
+                        <input type="number" class="form-control" name="grade" step="0.1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Feedback</label>
+                        <textarea class="form-control" name="feedback" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer"><button type="submit" class="btn btn-success">Save Grade</button></div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const token = localStorage.getItem('token');
+const user = JSON.parse(localStorage.getItem('user') || '{}');
+const assignmentId = {{ assignment.id }};
+const api = axios.create({ baseURL: '', headers: { Authorization: `Bearer ${token}` } });
+
+document.getElementById('userName').textContent = user.full_name;
+document.getElementById('userRole').textContent = user.role.toUpperCase();
+
+if (user.role === 'teacher' || user.role === 'admin') {
+    document.getElementById('teacherView').style.display = 'block';
+    loadSubmissions();
+} else if (user.role === 'student') {
+    document.getElementById('studentView').style.display = 'block';
+    checkSubmissionStatus();
+}
+
+async function loadSubmissions() {
+    try {
+        const [subsRes, studentsRes] = await Promise.all([
+            api.get(`/api/teacher/submissions/${assignmentId}`),
+            api.get(`/api/teacher/class-students/{{ subject.class_id }}`)
+        ]);
+
+        const tbody = document.querySelector('#submissionsTable tbody');
+        tbody.innerHTML = studentsRes.data.map(student => {
+            const sub = subsRes.data.find(s => s.student_id === student.id);
+            return `
+                <tr>
+                    <td>${student.name}</td>
+                    <td>${sub ? new Date(sub.submitted_at).toLocaleString() : '<span class="text-danger">Not Submitted</span>'}</td>
+                    <td>${sub ? `<a href="${sub.file_path}" target="_blank">View Work</a>` : '-'}</td>
+                    <td class="fw-bold">${sub && sub.grade !== null ? sub.grade : '-'}</td>
+                    <td><small>${sub && sub.feedback ? sub.feedback : '-'}</small></td>
+                    <td>
+                        ${sub ? `<button class="btn btn-sm btn-primary" onclick="openGradeModal(${sub.id}, ${sub.grade}, '${sub.feedback || ''}')">Grade</button>` : ''}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (e) { console.error(e); }
+}
+
+async function checkSubmissionStatus() {
+    try {
+        const res = await api.get('/api/lms/my-submissions');
+        const sub = res.data.find(s => s.assignment_id === assignmentId);
+        const statusDiv = document.getElementById('submissionStatus');
+        
+        if (sub) {
+            statusDiv.className = 'alert alert-success mt-3';
+            statusDiv.innerHTML = `
+                <h6>Submitted!</h6>
+                <p class="small mb-1"><strong>Date:</strong> ${new Date(sub.submitted_at).toLocaleString()}</p>
+                <p class="small mb-1"><strong>Grade:</strong> ${sub.grade !== null ? `<span class="badge bg-success">${sub.grade} / {{ assignment.max_score }}</span>` : '<span class="badge bg-warning text-dark">Pending Grading</span>'}</p>
+                ${sub.feedback ? `<p class="small mb-0"><strong>Teacher Feedback:</strong> ${sub.feedback}</p>` : ''}
+                <hr>
+                <button class="btn btn-sm btn-outline-success" onclick="toggleForm()">Resubmit New Link</button>
+            `;
+        } else {
+            statusDiv.className = 'alert alert-warning mt-3';
+            statusDiv.textContent = 'You have not submitted this assignment yet.';
+            document.getElementById('submissionForm').style.display = 'block';
+        }
+    } catch (e) { console.error(e); }
+}
+
+function toggleForm() {
+    document.getElementById('submissionForm').style.display = 'block';
+}
+
+document.getElementById('submissionForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target));
+    data.assignment_id = assignmentId;
+    try {
+        await api.post('/api/lms/submissions', data);
+        alert('Submitted successfully!');
+        location.reload();
+    } catch (err) { alert('Error submitting'); }
+});
+
+function openGradeModal(id, currentGrade, currentFeedback) {
+    document.getElementById('gradeSubmissionId').value = id;
+    document.querySelector('[name="grade"]').value = currentGrade || '';
+    document.querySelector('[name="feedback"]').value = currentFeedback || '';
+    new bootstrap.Modal(document.getElementById('gradingModal')).show();
+}
+
+document.getElementById('gradingForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('gradeSubmissionId').value;
+    const data = {
+        grade: parseFloat(document.querySelector('[name="grade"]').value),
+        feedback: document.querySelector('[name="feedback"]').value
+    };
+    try {
+        await api.put(`/api/teacher/submissions/${id}`, data);
+        alert('Grade saved!');
+        location.reload();
+    } catch (err) { alert('Error saving grade'); }
+});
+</script>
+{% endblock %}

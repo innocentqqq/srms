@@ -109,6 +109,15 @@ def student_assignments_page(request: Request):
     return templates.TemplateResponse(request, "student_assignments.html")
 
 
+@router.get("/course/{subject_id}/assignment/{assignment_id}", response_class=HTMLResponse)
+def assignment_detail(request: Request, subject_id: int, assignment_id: int, db: Session = Depends(get_db)):
+    subject = db.query(Subject).filter(Subject.id == subject_id).first()
+    assignment = db.query(academic.Assignment).filter(academic.Assignment.id == assignment_id).first()
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    return templates.TemplateResponse(request, "assignment_detail.html", {"subject": subject, "assignment": assignment})
+
+
 @router.get("/results", response_class=HTMLResponse)
 def results_page(request: Request):
     return templates.TemplateResponse(request, "results.html")

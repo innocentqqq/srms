@@ -161,7 +161,7 @@ async function loadContent() {
                                         <strong>${a.title}</strong><br>
                                         <small class="text-danger">Due: ${new Date(a.due_date).toLocaleString()}</small>
                                     </div>
-                                    <button class="btn btn-sm btn-outline-primary" onclick="viewAssignment(${a.id})">View</button>
+                                    <a href="/course/${subjectId}/assignment/${a.id}" class="btn btn-sm btn-outline-primary">Open</a>
                                 </li>
                             `).join('') : '<li class="list-group-item text-muted small">No assignments</li>'}
                         </ul>
