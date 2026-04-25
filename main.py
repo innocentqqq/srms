@@ -4,19 +4,18 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from app.core.database import engine, SessionLocal
+from app.core.database import engine, SessionLocal, Base
 from app.models import user, student, academic
 from app.api import auth, students, classes, subjects, exams, marks, results, teacher
 
-try:
-    user.Base.metadata.create_all(bind=engine)
-    student.Base.metadata.create_all(bind=engine)
-    academic.Base.metadata.create_all(bind=engine)
-except Exception as e:
-    print(f"Skipping initial table creation: {e}")
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Create tables if they don't exist
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        print(f"Initial table creation error: {e}")
+
     # Automatic Seeding
     db: Session = SessionLocal()
     try:
@@ -30,10 +29,14 @@ async def lifespan(app: FastAPI):
                 role="admin",
             )
             db.add(admin)
-            classes_list = [
-                student.Class(class_name=f"Grade {i}", year=2024) for i in range(6, 11)
-            ]
-            db.add_all(classes_list)
+            
+            # Check if classes already exist to avoid duplicates
+            if not db.query(student.Class).first():
+                classes_list = [
+                    student.Class(class_name=f"Grade {i}", year=2024) for i in range(6, 11)
+                ]
+                db.add_all(classes_list)
+                
             try:
                 db.commit()
                 print("Auto-seeding complete.")
@@ -54,6 +57,10 @@ app = FastAPI(title="School Result Management System", lifespan=lifespan)
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
+
+@app.api_route("/health", methods=["GET", "HEAD"])
+async def health_check():
+    return {"status": "ok"}
 
 app.include_router(auth.router, prefix="/api", tags=["Auth"])
 app.include_router(students.router, prefix="/api", tags=["Students"])

@@ -13,6 +13,14 @@ if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
 engine_args = {}
 if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
     engine_args["connect_args"] = {"check_same_thread": False}
+else:
+    engine_args.update({
+        "pool_pre_ping": True,
+        "pool_recycle": 280,
+        "pool_size": 5,
+        "max_overflow": 10,
+        "connect_args": {"sslmode": "require"}
+    })
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL, **engine_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
