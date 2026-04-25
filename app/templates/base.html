@@ -34,37 +34,38 @@
             const role = user.role;
             if (!role) return;
 
-            // Common elements
-            const navElements = {
-                admin: ['navTeachers', 'navStudents', 'navClasses', 'navSubjects', 'navExams'],
-                teacher: ['navMarks', 'navAttendance', 'navMaterials', 'navTimetable'],
-                student: ['navStudentAssignments', 'navResults'],
-                parent: ['navChildren']
-            };
+            // Hide all nav elements first
+            const allNavs = [
+                'navTeachers', 'navStudents', 'navClasses', 'navSubjects', 'navExams',
+                'navMarks', 'navAttendance', 'navMaterials', 'navTimetable',
+                'navStudentAssignments', 'navResults'
+            ];
+            allNavs.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
 
             // Show elements based on role
             if (role === 'admin') {
-                // Admin sees EVERYTHING
-                Object.values(navElements).flat().forEach(id => {
+                ['navTeachers', 'navStudents', 'navClasses', 'navSubjects', 'navExams'].forEach(id => {
                     const el = document.getElementById(id);
                     if (el) el.style.display = 'block';
                 });
             } else if (role === 'teacher') {
-                navElements.teacher.forEach(id => {
+                ['navMarks', 'navAttendance', 'navMaterials', 'navTimetable'].forEach(id => {
                     const el = document.getElementById(id);
                     if (el) el.style.display = 'block';
                 });
             } else if (role === 'student') {
-                navElements.student.forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) el.style.display = 'block';
-                });
-            } else if (role === 'parent') {
-                navElements.parent.forEach(id => {
+                ['navStudentAssignments', 'navResults'].forEach(id => {
                     const el = document.getElementById(id);
                     if (el) el.style.display = 'block';
                 });
             }
+            
+            // Always show results for everyone except perhaps students have their own link
+            const resEl = document.getElementById('navResults');
+            if (resEl) resEl.style.display = 'block';
         }
 
         if ('serviceWorker' in navigator) {
