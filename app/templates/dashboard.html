@@ -194,44 +194,29 @@
 
 {% block scripts %}
 <script>
-const token = localStorage.getItem('token');
-const user = JSON.parse(localStorage.getItem('user') || '{}');
-
-if (!token) {
-    window.location.href = '/login';
-}
-
-if (user.role === 'admin') {
-    document.getElementById('adminStats').style.display = 'block';
-    document.getElementById('btnNewAnnouncement').style.display = 'block';
-    document.getElementById('btnAddEvent').style.display = 'block';
-} else if (user.role === 'teacher') {
-    document.getElementById('teacherStats').style.display = 'block';
-    document.getElementById('timetableSection').style.display = 'block';
-    document.getElementById('btnNewAnnouncement').style.display = 'block';
-    document.getElementById('btnAddEvent').style.display = 'block';
-} else if (user.role === 'student') {
-    document.getElementById('studentStats').style.display = 'block';
-    document.getElementById('deadlinesSection').style.display = 'block';
-    document.getElementById('timetableSection').style.display = 'block';
-}
+// We use the 'user' and 'token' defined in base.html
+if (!token) window.location.href = '/login';
 
 const api = axios.create({ baseURL: '', headers: { Authorization: `Bearer ${token}` } });
 
 async function loadDashboard() {
-    console.log("Loading dashboard for role:", user.role);
     try {
-        // Set basic info immediately
+        // 1. Immediately show basic user info
         document.getElementById('userName').textContent = user.full_name || 'User';
         document.getElementById('userRole').textContent = (user.role || '').toUpperCase();
 
+        // 2. Role-specific UI elements
         if (user.role === 'admin') {
-            console.log("Fetching admin stats...");
+            document.getElementById('adminStats').style.display = 'block';
+            document.getElementById('btnNewAnnouncement').style.display = 'block';
+            if (document.getElementById('btnAddEvent')) document.getElementById('btnAddEvent').style.display = 'block';
+            
+            // Load admin stats fail-safely
             const [students, classes, exams, subjects] = await Promise.all([
-                api.get('/api/students').catch(e => ({data: []})),
-                api.get('/api/classes').catch(e => ({data: []})),
-                api.get('/api/exams').catch(e => ({data: []})),
-                api.get('/api/subjects').catch(e => ({data: []}))
+                api.get('/api/students').catch(() => ({data: []})),
+                api.get('/api/classes').catch(() => ({data: []})),
+                api.get('/api/exams').catch(() => ({data: []})),
+                api.get('/api/subjects').catch(() => ({data: []}))
             ]);
 
             document.getElementById('totalStudents').textContent = students.data.length;
@@ -243,10 +228,16 @@ async function loadDashboard() {
             if (tbody1) {
                 tbody1.innerHTML = students.data.slice(0, 5).map(s => `<tr><td>${s.student_id}</td><td>${s.name}</td><td>${s.class_id}</td></tr>`).join('');
             }
+
         } else if (user.role === 'teacher') {
+            document.getElementById('teacherStats').style.display = 'block';
+            document.getElementById('timetableSection').style.display = 'block';
+            document.getElementById('btnNewAnnouncement').style.display = 'block';
+            if (document.getElementById('btnAddEvent')) document.getElementById('btnAddEvent').style.display = 'block';
+
             const [assigned, timetable] = await Promise.all([
-                api.get('/api/teacher/assigned-subjects'),
-                api.get('/api/teacher/timetable')
+                api.get('/api/teacher/assigned-subjects').catch(() => ({data: []})),
+                api.get('/api/teacher/timetable').catch(() => ({data: []}))
             ]);
             document.getElementById('assignedSubjectsCount').textContent = assigned.data.length;
             
@@ -257,50 +248,21 @@ async function loadDashboard() {
                 <a href="/course/${s.id}" class="btn btn-sm btn-outline-light me-2 mb-2">${s.subject_name}</a>
             `).join('');
             teacherStats.appendChild(subList);
-            document.getElementById('todayAttendanceCount').textContent = "View";
-            document.getElementById('pendingMaterials').textContent = "Upload";
-            
-            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            const today = days[new Date().getDay()];
-            const todayClasses = timetable.data.filter(t => t.day_of_week === today);
-            const ttDiv = document.getElementById('todayTimetable');
-            if (todayClasses.length > 0) {
-                ttDiv.innerHTML = todayClasses.map(c => `
-                    <div class="border-start border-primary border-4 p-2 mb-2 bg-light">
-                        <strong>${c.start_time} - ${c.end_time}</strong><br>
-                        <small class="text-muted">Subject ID: ${c.subject_id} | Room: ${c.room || 'N/A'}</small>
-                    </div>
-                `).join('');
-            }
-        } else if (user.role === 'student') {
-            const [subs, deadlines, attRes] = await Promise.all([
-                api.get('/api/subjects' + (user.class_id ? `?class_id=${user.class_id}` : '')),
-                api.get('/api/teacher/assignments/0'),
-                api.get(`/api/teacher/attendance/stats/${user.student_id}`)
-            ]);
-            document.getElementById('enrolledSubjects').textContent = subs.data.length;
-            document.getElementById('attendancePercent').textContent = (attRes.data.percent || 100) + '%';
-            
-            // Show enrolled subjects list with progress
-            const studentStats = document.getElementById('studentStats');
-            const subList = document.createElement('div');
-            subList.className = 'mt-3';
-            subList.innerHTML = '<h6 class="text-white">My Subjects:</h6>';
-            
-            for (const s of subs.data) {
-                const prog = await api.get(`/api/lms/progress/${s.id}`).catch(() => ({data: {percent: 0}}));
-                subList.innerHTML += `
-                    <div class="mb-2">
-                        <a href="/course/${s.id}" class="btn btn-sm btn-outline-light me-2 mb-1">${s.subject_name}</a>
-                        <div class="progress" style="height: 5px; width: 100px; display: inline-block;">
-                            <div class="progress-bar bg-white" style="width: ${prog.data.percent}%"></div>
-                        </div>
-                        <small class="text-white ms-1">${prog.data.percent}%</small>
-                    </div>
-                `;
-            }
-            studentStats.appendChild(subList);
 
+        } else if (user.role === 'student') {
+            document.getElementById('studentStats').style.display = 'block';
+            document.getElementById('deadlinesSection').style.display = 'block';
+            document.getElementById('timetableSection').style.display = 'block';
+
+            const [subs, deadlines, attRes] = await Promise.all([
+                api.get('/api/subjects' + (user.class_id ? `?class_id=${user.class_id}` : '')).catch(() => ({data: []})),
+                api.get('/api/teacher/assignments/0').catch(() => ({data: []})),
+                api.get(`/api/teacher/attendance/stats/${user.student_id}`).catch(() => ({data: {percent: 100}}))
+            ]);
+            
+            document.getElementById('enrolledSubjects').textContent = subs.data.length;
+            document.getElementById('attendancePercent').textContent = (attRes.data.percent) + '%';
+            
             const dList = document.getElementById('deadlinesList');
             const pending = deadlines.data.filter(a => new Date(a.due_date) > new Date());
             document.getElementById('upcomingDeadlines').textContent = pending.length;
@@ -315,6 +277,7 @@ async function loadDashboard() {
             document.getElementById('recentStudentsSection').style.display = 'none';
         }
 
+        // Global dashboard items
         const examsRes = await api.get('/api/exams').catch(() => ({ data: [] }));
         const tbody2 = document.querySelector('#recentExams tbody');
         if (tbody2) {
@@ -340,10 +303,7 @@ async function loadDashboard() {
         initCalendar();
 
     } catch (err) {
-        console.error(err);
-        if (err.response && err.response.status === 401) {
-            window.location.href = '/login';
-        }
+        console.error("Dashboard load crashed", err);
     }
 }
 
@@ -353,18 +313,9 @@ function initCalendar() {
     const calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
         headerToolbar: {
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,timeGridWeek,listWeek'
+            left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listWeek'
         },
-        events: '/api/calendar/events',
-        eventClick: function(info) {
-            alert('Event: ' + info.event.title + '\n' + (info.event.extendedProps.description || ''));
-            if (info.event.url) {
-                info.jsEvent.preventDefault();
-                window.location.href = info.event.url;
-            }
-        }
+        events: '/api/calendar/events'
     });
     calendar.render();
 }
@@ -378,7 +329,6 @@ document.getElementById('eventForm').addEventListener('submit', async (e) => {
     const data = Object.fromEntries(new FormData(e.target));
     try {
         await api.post('/api/calendar/events', data);
-        alert("Event added!");
         location.reload();
     } catch (err) { alert('Error adding event'); }
 });

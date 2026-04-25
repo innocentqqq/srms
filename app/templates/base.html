@@ -30,13 +30,30 @@
     <script>
         // Global Auth & Sidebar Logic
         const token = localStorage.getItem('token');
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        let user = JSON.parse(localStorage.getItem('user') || '{}');
+
+        async function ensureUserLoaded() {
+            if (token && (!user || !user.role || !user.full_name)) {
+                try {
+                    const res = await axios.get('/api/me', {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    user = res.data;
+                    localStorage.setItem('user', JSON.stringify(user));
+                    updateSidebar();
+                    if (window.location.pathname === '/dashboard' && typeof loadDashboard === 'function') {
+                        loadDashboard();
+                    }
+                } catch (e) {
+                    console.error("Profile refresh failed", e);
+                }
+            }
+        }
 
         function updateSidebar() {
             const role = user.role;
             if (!role) return;
 
-            // Hide all nav elements first
             const allNavs = [
                 'navTeachers', 'navStudents', 'navClasses', 'navSubjects', 'navExams',
                 'navMarks', 'navAttendance', 'navMaterials', 'navTimetable',
@@ -47,7 +64,6 @@
                 if (el) el.style.display = 'none';
             });
 
-            // Show elements based on role
             if (role === 'admin') {
                 ['navTeachers', 'navStudents', 'navClasses', 'navSubjects', 'navExams'].forEach(id => {
                     const el = document.getElementById(id);
@@ -65,7 +81,6 @@
                 });
             }
             
-            // Always show results for everyone except perhaps students have their own link
             const resEl = document.getElementById('navResults');
             if (resEl) resEl.style.display = 'block';
         }
@@ -76,8 +91,10 @@
             });
         }
         
-        // Run on every page load
-        document.addEventListener('DOMContentLoaded', updateSidebar);
+        document.addEventListener('DOMContentLoaded', () => {
+            ensureUserLoaded();
+            updateSidebar();
+        });
     </script>
     {% block scripts %}{% endblock %}
 </body>
