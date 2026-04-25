@@ -22,19 +22,84 @@
                         <p><strong>Phone:</strong> {{ student.phone }}</p>
                     </div>
                     <div class="col-md-6">
-                        <h5>Latest Results</h5>
-                        <table class="table">
-                            <thead><tr><th>Subject</th><th>Mark</th></tr></thead>
-                            <tbody>
-                                {% for mark in student.marks[:5] %}
-                                <tr><td>{{ mark.subject.subject_name }}</td><td>{{ mark.marks }}</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                        <h5>Behavioral Records</h5>
+                        <div id="behaviorList" class="mb-3">
+                            <p class="text-muted small">Loading records...</p>
+                        </div>
+                        <button class="btn btn-sm btn-outline-primary" onclick="showBehaviorModal()">Add Merit/Demerit</button>
                     </div>
                 </div>
-            </div>
+                <hr>
+                <div class="row">
+                    <div class="col-md-12">
+                        <h5>Latest Results</h5>
+...
+<!-- Behavior Modal -->
+<div class="modal fade" id="behaviorModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5>Record Behavior</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+            <form id="behaviorForm">
+                <div class="modal-body">
+                    <input type="hidden" name="student_id" value="{{ student.id }}">
+                    <div class="mb-3">
+                        <label>Type</label>
+                        <select class="form-control" name="type">
+                            <option value="Merit">Merit (Positive)</option>
+                            <option value="Demerit">Demerit (Negative)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3"><label>Points</label><input type="number" class="form-control" name="points" value="1"></div>
+                    <div class="mb-3"><label>Reason</label><textarea class="form-control" name="reason" required></textarea></div>
+                </div>
+                <div class="modal-footer"><button type="submit" class="btn btn-primary">Save Record</button></div>
+            </form>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const token = localStorage.getItem('token');
+const api = axios.create({ baseURL: '', headers: { Authorization: `Bearer ${token}` } });
+const studentId = {{ student.id }};
+
+async function loadBehavior() {
+    try {
+        const res = await api.get(`/api/teacher/behavior/${studentId}`);
+        const list = document.getElementById('behaviorList');
+        if (res.data.length === 0) {
+            list.innerHTML = '<p class="text-muted small">No behavior records yet.</p>';
+            return;
+        }
+        list.innerHTML = res.data.map(r => `
+            <div class="alert ${r.type === 'Merit' ? 'alert-success' : 'alert-danger'} py-2 px-3 mb-2 border-0">
+                <div class="d-flex justify-content-between">
+                    <strong>${r.type} (${r.points} pts)</strong>
+                    <small>${new Date(r.created_at).toLocaleDateString()}</small>
+                </div>
+                <p class="mb-0 small">${r.reason}</p>
+            </div>
+        `).join('');
+    } catch (e) { console.error(e); }
+}
+
+function showBehaviorModal() {
+    new bootstrap.Modal(document.getElementById('behaviorModal')).show();
+}
+
+document.getElementById('behaviorForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target));
+    data.points = parseInt(data.points);
+    data.student_id = studentId;
+    try {
+        await api.post('/api/teacher/behavior', data);
+        location.reload();
+    } catch (err) { alert("Error recording behavior"); }
+});
+
+loadBehavior();
+</script>
 {% endblock %}

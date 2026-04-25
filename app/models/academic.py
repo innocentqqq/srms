@@ -224,3 +224,18 @@ class ActivityCompletion(Base):
     student = relationship("Student")
     material = relationship("Material")
     assignment = relationship("Assignment")
+
+
+class BehaviorRecord(Base):
+    __tablename__ = "behavior_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id"))
+    teacher_id = Column(Integer, ForeignKey("teachers.id"))
+    type = Column(String)  # Merit, Demerit
+    points = Column(Integer, default=0)
+    reason = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    student = relationship("Student")
+    teacher = relationship("Teacher")

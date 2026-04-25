@@ -5,7 +5,7 @@ from datetime import date, datetime
 from app.api.auth import get_current_user, get_db
 from app.models.user import User, Teacher
 from app.models.student import Student, Class
-from app.models.academic import Subject, SubjectAssignment, Attendance, Announcement, Material, Timetable, CourseSection, Assignment, Submission, GradeCategory
+from app.models.academic import Subject, SubjectAssignment, Attendance, Announcement, Material, Timetable, CourseSection, Assignment, Submission, GradeCategory, BehaviorRecord
 from app.schemas import (
     AttendanceCreate,
     AttendanceResponse,
@@ -26,6 +26,8 @@ from app.schemas import (
     SubmissionGrade,
     GradeCategoryCreate,
     GradeCategoryResponse,
+    BehaviorRecordCreate,
+    BehaviorRecordResponse,
 )
 
 router = APIRouter()
@@ -133,6 +135,14 @@ def get_attendance(class_id: int, date: Optional[date] = None, db: Session = Dep
     return query.all()
 
 
+@router.get("/attendance/stats/{student_id}")
+def get_student_attendance_stats(student_id: int, db: Session = Depends(get_db)):
+    total = db.query(Attendance).filter(Attendance.student_id == student_id).count()
+    if total == 0: return {"percent": 100}
+    present = db.query(Attendance).filter(Attendance.student_id == student_id, Attendance.status == "Present").count()
+    return {"percent": round((present / total) * 100)}
+
+
 @router.post("/announcements", response_model=AnnouncementResponse)
 def create_announcement(announcement: AnnouncementCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if current_user.role not in ["teacher", "admin"]:
@@ -231,14 +241,6 @@ def delete_timetable(timetable_id: int, current_user: User = Depends(get_current
     return {"message": "Deleted"}
 
 
-@router.get("/attendance/stats/{student_id}")
-def get_student_attendance_stats(student_id: int, db: Session = Depends(get_db)):
-    total = db.query(Attendance).filter(Attendance.student_id == student_id).count()
-    if total == 0: return {"percent": 100}
-    present = db.query(Attendance).filter(Attendance.student_id == student_id, Attendance.status == "Present").count()
-    return {"percent": round((present / total) * 100)}
-
-
 @router.post("/sections", response_model=CourseSectionResponse)
 def create_section(section: CourseSectionCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if current_user.role not in ["teacher", "admin"]:
@@ -310,3 +312,24 @@ def grade_submission(submission_id: int, grade_data: SubmissionGrade, current_us
     db.commit()
     db.refresh(db_submission)
     return db_submission
+
+
+@router.post("/behavior", response_model=BehaviorRecordResponse)
+def create_behavior_record(record: BehaviorRecordCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if current_user.role not in ["teacher", "admin"]:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    teacher = db.query(Teacher).filter(Teacher.user_id == current_user.id).first()
+    db_record = BehaviorRecord(
+        **record.model_dump(),
+        teacher_id=teacher.id if teacher else None
+    )
+    db.add(db_record)
+    db.commit()
+    db.refresh(db_record)
+    return db_record
+
+
+@router.get("/behavior/{student_id}", response_model=List[BehaviorRecordResponse])
+def get_student_behavior(student_id: int, db: Session = Depends(get_db)):
+    return db.query(BehaviorRecord).filter(BehaviorRecord.student_id == student_id).all()

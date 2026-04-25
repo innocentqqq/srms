@@ -118,6 +118,14 @@ def assignment_detail(request: Request, subject_id: int, assignment_id: int, db:
     return templates.TemplateResponse(request, "assignment_detail.html", {"subject": subject, "assignment": assignment})
 
 
+@router.get("/course/{subject_id}/gradebook", response_class=HTMLResponse)
+def subject_gradebook(request: Request, subject_id: int, db: Session = Depends(get_db)):
+    subject = db.query(Subject).filter(Subject.id == subject_id).first()
+    if not subject:
+        raise HTTPException(status_code=404, detail="Subject not found")
+    return templates.TemplateResponse(request, "gradebook.html", {"subject": subject})
+
+
 @router.get("/results", response_class=HTMLResponse)
 def results_page(request: Request):
     return templates.TemplateResponse(request, "results.html")
