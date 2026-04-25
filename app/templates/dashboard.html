@@ -205,25 +205,35 @@ if (user.role === 'admin') {
 const api = axios.create({ baseURL: '', headers: { Authorization: `Bearer ${token}` } });
 
 async function loadDashboard() {
+    console.log("Loading dashboard for role:", user.role);
     try {
+        // Set basic info immediately
+        document.getElementById('userName').textContent = user.full_name || 'User';
+        document.getElementById('userRole').textContent = (user.role || '').toUpperCase();
+
         if (user.role === 'admin') {
+            console.log("Fetching admin stats...");
             const [students, classes, exams, subjects] = await Promise.all([
-                api.get('/api/students'),
-                api.get('/api/classes'),
-                api.get('/api/exams'),
-                api.get('/api/subjects')
+                api.get('/api/students').catch(e => { console.error("Students API failed"); throw e; }),
+                api.get('/api/classes').catch(e => { console.error("Classes API failed"); throw e; }),
+                api.get('/api/exams').catch(e => { console.error("Exams API failed"); throw e; }),
+                api.get('/api/subjects').catch(e => { console.error("Subjects API failed"); throw e; })
             ]);
+
             document.getElementById('totalStudents').textContent = students.data.length;
             document.getElementById('totalClasses').textContent = classes.data.length;
             document.getElementById('totalExams').textContent = exams.data.length;
             document.getElementById('totalSubjects').textContent = subjects.data.length;
-            
+
             const tbody1 = document.querySelector('#recentStudents tbody');
-            tbody1.innerHTML = '';
-            students.data.slice(0, 5).forEach(s => {
-                tbody1.innerHTML += `<tr><td>${s.student_id}</td><td>${s.name}</td><td>${s.class_id}</td></tr>`;
-            });
-        } else if (user.role === 'teacher') {
+            if (tbody1) {
+                tbody1.innerHTML = '';
+                students.data.slice(0, 5).forEach(s => {
+                    tbody1.innerHTML += `<tr><td>${s.student_id}</td><td>${s.name}</td><td>${s.class_id}</td></tr>`;
+                });
+            }
+        }
+ else if (user.role === 'teacher') {
             const [assigned, timetable] = await Promise.all([
                 api.get('/api/teacher/assigned-subjects'),
                 api.get('/api/teacher/timetable')
@@ -287,26 +297,26 @@ async function loadDashboard() {
             document.getElementById('recentStudentsSection').style.display = 'none';
         }
 
-        const exams = await api.get('/api/exams');
+        const examsRes = await api.get('/api/exams').catch(() => ({ data: [] }));
         const tbody2 = document.querySelector('#recentExams tbody');
-        tbody2.innerHTML = '';
-        exams.data.slice(0, 5).forEach(e => {
-            tbody2.innerHTML += `<tr><td>${e.exam_name}</td><td>${e.term}</td><td>${e.year}</td></tr>`;
-        });
+        if (tbody2) {
+            tbody2.innerHTML = examsRes.data.length > 0 
+                ? examsRes.data.slice(0, 5).map(e => `<tr><td>${e.exam_name}</td><td>${e.term}</td><td>${e.year}</td></tr>`).join('')
+                : '<tr><td colspan="3" class="text-center text-muted">No recent exams</td></tr>';
+        }
         
-        const ann = await api.get('/api/teacher/announcements');
+        const ann = await api.get('/api/teacher/announcements').catch(() => ({ data: [] }));
         const annList = document.getElementById('announcementsList');
-        if (ann.data.length > 0) {
-            annList.innerHTML = '';
-            ann.data.slice(0, 3).forEach(a => {
-                annList.innerHTML += `
+        if (annList) {
+            annList.innerHTML = ann.data.length > 0
+                ? ann.data.slice(0, 3).map(a => `
                     <div class="mb-3 border-bottom pb-2">
                         <h6>${a.title}</h6>
                         <p class="small text-muted mb-1">${a.content.substring(0, 100)}...</p>
                         <small class="text-primary">${new Date(a.created_at).toLocaleDateString()}</small>
                     </div>
-                `;
-            });
+                `).join('')
+                : '<p class="text-muted">No announcements yet.</p>';
         }
 
     } catch (err) {
