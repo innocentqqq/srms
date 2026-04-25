@@ -92,7 +92,9 @@ async function loadStudents() {
     classes.data.forEach(c => classMap[c.id] = c.class_name);
     const tbody = document.querySelector('#studentsTable tbody');
     tbody.innerHTML = res.data.map(s => `<tr>
-        <td>${s.student_id}</td><td>${s.name}</td><td>${s.dob}</td><td>${classMap[s.class_id] || s.class_id}</td>
+        <td>${s.student_id}</td>
+        <td><a href="/admin/student/${s.id}" class="text-decoration-none">${s.name}</a></td>
+        <td>${s.dob}</td><td>${classMap[s.class_id] || s.class_id}</td>
         <td>${s.parent_name}</td><td>${s.phone}</td>
         <td><button class="btn btn-sm btn-danger" onclick="deleteStudent(${s.id})">Delete</button></td>
     </tr>`).join('');

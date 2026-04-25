@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Student Detail - SRMS{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-2 sidebar p-0">
+            <div class="p-3 text-center border-bottom border-secondary">
+                <h5 class="text-white">Admin</h5>
+            </div>
+            <a href="/dashboard"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a>
+            <a href="/admin/students" class="active"><i class="bi bi-people me-2"></i> Students</a>
+        </div>
+        <div class="col-md-10 p-4">
+            <div class="card p-4">
+                <h2>{{ student.name }}</h2>
+                <hr>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Student ID:</strong> {{ student.student_id }}</p>
+                        <p><strong>Class:</strong> {{ student.class_obj.class_name }}</p>
+                        <p><strong>Parent Name:</strong> {{ student.parent_name }}</p>
+                        <p><strong>Phone:</strong> {{ student.phone }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Latest Results</h5>
+                        <table class="table">
+                            <thead><tr><th>Subject</th><th>Mark</th></tr></thead>
+                            <tbody>
+                                {% for mark in student.marks[:5] %}
+                                <tr><td>{{ mark.subject.subject_name }}</td><td>{{ mark.marks }}</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

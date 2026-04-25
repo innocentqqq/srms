@@ -86,12 +86,49 @@ async function loadTeachers() {
         const res = await api.get('/api/teacher/teachers');
         const tbody = document.querySelector('#teachersTable tbody');
         tbody.innerHTML = res.data.map(t => `<tr>
-            <td>${t.teacher_id}</td><td>${t.full_name}</td><td>${t.email}</td><td>${t.phone || '-'}</td>
+            <td>${t.teacher_id}</td>
+            <td><a href="/admin/teacher/${t.id}" class="text-decoration-none">${t.full_name}</a></td>
+            <td>${t.email}</td><td>${t.phone || '-'}</td>
             <td>
+                <button class="btn btn-sm btn-info text-white me-1" onclick="openAssignModal(${t.id})">Assign Subject</button>
                 <button class="btn btn-sm btn-danger" onclick="deleteTeacher(${t.id})">Delete</button>
             </td>
-        </tr>`).join('');
-    } catch (e) {
+            ...
+            loadTeachers();
+
+            async function openAssignModal(teacherId) {
+            document.getElementById('teacherForm').insertAdjacentHTML('afterend', `
+            <div class="modal fade" id="assignModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header"><h5>Assign Teacher to Subject</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+                    <div class="modal-body">
+                        <input type="hidden" id="assignTeacherId" value="${teacherId}">
+                        <div class="mb-3">
+                            <label>Select Subject</label>
+                            <select class="form-control" id="subjectSelect"></select>
+                        </div>
+                    </div>
+                    <div class="modal-footer"><button class="btn btn-primary" onclick="submitAssignment()">Assign</button></div>
+                </div>
+            </div>
+            </div>
+            `);
+            const subjects = await api.get('/api/subjects');
+            document.getElementById('subjectSelect').innerHTML = subjects.data.map(s => `<option value="${s.id}">${s.subject_name}</option>`).join('');
+            new bootstrap.Modal(document.getElementById('assignModal')).show();
+            }
+
+            async function submitAssignment() {
+            const teacherId = document.getElementById('assignTeacherId').value;
+            const subjectId = document.getElementById('subjectSelect').value;
+            try {
+            await api.post(`/api/subjects/${subjectId}/assign-teacher/${teacherId}`);
+            alert("Assigned successfully!");
+            location.reload();
+            } catch (err) { alert("Error assigning teacher"); }
+            }
+
         console.error(e);
     }
 }

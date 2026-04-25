@@ -1,13 +1,32 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
-from app.models.academic import Subject
-from app.models.user import User
+from app.models.academic import Subject, SubjectAssignment
+from app.models.user import User, Teacher
 from app.schemas import SubjectCreate, SubjectResponse
 from app.api.auth import get_current_user, get_db
 from typing import List
 
 router = APIRouter()
+
+
+@router.post("/subjects/{subject_id}/assign-teacher/{teacher_id}")
+def assign_teacher_to_subject(subject_id: int, teacher_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    existing = db.query(SubjectAssignment).filter(
+        SubjectAssignment.subject_id == subject_id,
+        SubjectAssignment.teacher_id == teacher_id
+    ).first()
+    
+    if existing:
+        return {"message": "Already assigned"}
+        
+    assignment = SubjectAssignment(subject_id=subject_id, teacher_id=teacher_id)
+    db.add(assignment)
+    db.commit()
+    return {"message": "Teacher assigned to subject"}
 
 
 @router.post("/subjects", response_model=SubjectResponse)

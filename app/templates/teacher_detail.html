@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Teacher Detail - SRMS{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-2 sidebar p-0">
+            <div class="p-3 text-center border-bottom border-secondary">
+                <h5 class="text-white">Admin</h5>
+            </div>
+            <a href="/dashboard"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a>
+            <a href="/admin/teachers" class="active"><i class="bi bi-person-badge me-2"></i> Teachers</a>
+        </div>
+        <div class="col-md-10 p-4">
+            <div class="card p-4">
+                <h2>{{ teacher.user.full_name }}</h2>
+                <hr>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Teacher ID:</strong> {{ teacher.teacher_id }}</p>
+                        <p><strong>Email:</strong> {{ teacher.user.email }}</p>
+                        <p><strong>Phone:</strong> {{ teacher.phone }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Assigned Subjects</h5>
+                        <ul class="list-group">
+                            {% for assignment in teacher.subject_assignments %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ assignment.subject.subject_name }} (Class ID: {{ assignment.subject.class_id }})
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

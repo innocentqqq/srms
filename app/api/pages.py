@@ -52,6 +52,22 @@ def admin_exams(request: Request):
     return templates.TemplateResponse(request, "exams.html")
 
 
+@router.get("/admin/teacher/{teacher_id}", response_class=HTMLResponse)
+def admin_teacher_detail(request: Request, teacher_id: int, db: Session = Depends(get_db)):
+    teacher = db.query(Teacher).filter(Teacher.id == teacher_id).first()
+    if not teacher:
+        raise HTTPException(status_code=404, detail="Teacher not found")
+    return templates.TemplateResponse(request, "teacher_detail.html", {"teacher": teacher})
+
+
+@router.get("/admin/student/{student_id}", response_class=HTMLResponse)
+def admin_student_detail(request: Request, student_id: int, db: Session = Depends(get_db)):
+    student = db.query(Student).filter(Student.id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    return templates.TemplateResponse(request, "student_detail.html", {"student": student})
+
+
 @router.get("/teacher/marks", response_class=HTMLResponse)
 def teacher_marks(request: Request):
     return templates.TemplateResponse(request, "marks.html")
