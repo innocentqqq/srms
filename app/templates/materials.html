@@ -85,31 +85,19 @@
 {% endblock %}
 {% block scripts %}
 <script>
-const token = localStorage.getItem('token');
-const user = JSON.parse(localStorage.getItem('user') || '{}');
+// Use global 'user' and 'token' from base.html
 if (!token) window.location.href = '/login';
 
-document.getElementById('userName').textContent = user.full_name || 'User';
-document.getElementById('userRole').textContent = (user.role || '').toUpperCase();
-
-if (user.role === 'admin') {
-    document.getElementById('navTeachers').style.display = 'block';
-    document.getElementById('navStudents').style.display = 'block';
-    document.getElementById('navClasses').style.display = 'block';
-    document.getElementById('navSubjects').style.display = 'block';
-    document.getElementById('navExams').style.display = 'block';
-    document.getElementById('navMarks').style.display = 'block';
-    document.getElementById('navAttendance').style.display = 'block';
-    document.getElementById('navMaterials').style.display = 'block';
-    document.getElementById('navTimetable').style.display = 'block';
-} else if (user.role === 'teacher') {
-    document.getElementById('navMarks').style.display = 'block';
-    document.getElementById('navAttendance').style.display = 'block';
-    document.getElementById('navMaterials').style.display = 'block';
-    document.getElementById('navTimetable').style.display = 'block';
-}
-
 const api = axios.create({ baseURL: '', headers: { Authorization: `Bearer ${token}` } });
+
+function updateUserInfo() {
+    if (user && user.full_name) {
+        document.getElementById('userName').textContent = user.full_name;
+        document.getElementById('userRole').textContent = (user.role || '').toUpperCase();
+    }
+}
+updateUserInfo();
+
 let assignedSubjects = [];
 
 async function init() {
