@@ -210,3 +210,17 @@ class CalendarEvent(Base):
 
     class_obj = relationship("Class")
     author = relationship("User")
+
+
+class ActivityCompletion(Base):
+    __tablename__ = "activity_completions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id"))
+    material_id = Column(Integer, ForeignKey("materials.id"), nullable=True)
+    assignment_id = Column(Integer, ForeignKey("assignments.id"), nullable=True)
+    completed_at = Column(DateTime, default=datetime.utcnow)
+
+    student = relationship("Student")
+    material = relationship("Material")
+    assignment = relationship("Assignment")

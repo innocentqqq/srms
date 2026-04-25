@@ -231,6 +231,14 @@ def delete_timetable(timetable_id: int, current_user: User = Depends(get_current
     return {"message": "Deleted"}
 
 
+@router.get("/attendance/stats/{student_id}")
+def get_student_attendance_stats(student_id: int, db: Session = Depends(get_db)):
+    total = db.query(Attendance).filter(Attendance.student_id == student_id).count()
+    if total == 0: return {"percent": 100}
+    present = db.query(Attendance).filter(Attendance.student_id == student_id, Attendance.status == "Present").count()
+    return {"percent": round((present / total) * 100)}
+
+
 @router.post("/sections", response_model=CourseSectionResponse)
 def create_section(section: CourseSectionCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if current_user.role not in ["teacher", "admin"]:
