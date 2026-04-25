@@ -194,3 +194,19 @@ class AuditLog(Base):
     timestamp = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User")
+
+
+class CalendarEvent(Base):
+    __tablename__ = "calendar_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, index=True)
+    description = Column(Text, nullable=True)
+    start_time = Column(DateTime)
+    end_time = Column(DateTime)
+    event_type = Column(String)  # holiday, assembly, event
+    class_id = Column(Integer, ForeignKey("classes.id"), nullable=True)  # Null = School-wide
+    author_id = Column(Integer, ForeignKey("users.id"))
+
+    class_obj = relationship("Class")
+    author = relationship("User")

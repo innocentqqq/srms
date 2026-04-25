@@ -1,6 +1,6 @@
 from pydantic import BaseModel
-from typing import Optional
-from datetime import date
+from typing import Optional, List
+from datetime import date, datetime
 
 
 class UserBase(BaseModel):
@@ -180,9 +180,6 @@ class ResultSummary(BaseModel):
     subjects: list
 
 
-from datetime import datetime
-
-
 class AttendanceBase(BaseModel):
     student_id: int
     class_id: int
@@ -257,32 +254,6 @@ class TimetableCreate(TimetableBase):
 
 class TimetableResponse(TimetableBase):
     id: int
-
-    class Config:
-        from_attributes = True
-
-
-class ParentBase(BaseModel):
-    phone: str
-    address: Optional[str] = None
-
-
-class ParentCreate(ParentBase):
-    user_id: int
-
-
-class ParentAccountCreate(ParentBase):
-    full_name: str
-    email: str
-    username: str
-    password: str
-
-
-class ParentResponse(ParentBase):
-    id: int
-    user_id: int
-    full_name: Optional[str] = None
-    email: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -377,6 +348,27 @@ class AuditLogResponse(BaseModel):
     record_id: int
     details: Optional[str] = None
     timestamp: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class CalendarEventBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+    start_time: datetime
+    end_time: datetime
+    event_type: str
+    class_id: Optional[int] = None
+
+
+class CalendarEventCreate(CalendarEventBase):
+    pass
+
+
+class CalendarEventResponse(CalendarEventBase):
+    id: int
+    author_id: int
 
     class Config:
         from_attributes = True

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from app.core.database import engine, SessionLocal, Base
 from app.models import user, student, academic
-from app.api import auth, students, classes, subjects, exams, marks, results, teacher, lms
+from app.api import auth, students, classes, subjects, exams, marks, results, teacher, lms, calendar
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -65,6 +65,7 @@ app.include_router(marks.router, prefix="/api", tags=["Marks"])
 app.include_router(results.router, prefix="/api", tags=["Results"])
 app.include_router(teacher.router, prefix="/api/teacher", tags=["Teacher"])
 app.include_router(lms.router, prefix="/api/lms", tags=["LMS"])
+app.include_router(calendar.router, prefix="/api/calendar", tags=["Calendar"])
 
 from app.api import pages
 
