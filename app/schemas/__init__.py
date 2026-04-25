@@ -257,3 +257,121 @@ class TimetableResponse(TimetableBase):
 
     class Config:
         from_attributes = True
+
+
+class ParentBase(BaseModel):
+    phone: str
+    address: Optional[str] = None
+
+
+class ParentCreate(ParentBase):
+    user_id: int
+
+
+class ParentAccountCreate(ParentBase):
+    full_name: str
+    email: str
+    username: str
+    password: str
+
+
+class ParentResponse(ParentBase):
+    id: int
+    user_id: int
+
+    class Config:
+        from_attributes = True
+
+
+class CourseSectionBase(BaseModel):
+    subject_id: int
+    title: str
+    description: Optional[str] = None
+    order: int = 0
+
+
+class CourseSectionCreate(CourseSectionBase):
+    pass
+
+
+class CourseSectionResponse(CourseSectionBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+
+class GradeCategoryBase(BaseModel):
+    subject_id: int
+    name: str
+    weight: float
+
+
+class GradeCategoryCreate(GradeCategoryBase):
+    pass
+
+
+class GradeCategoryResponse(GradeCategoryBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+
+class AssignmentBase(BaseModel):
+    subject_id: int
+    section_id: Optional[int] = None
+    category_id: Optional[int] = None
+    title: str
+    description: Optional[str] = None
+    due_date: datetime
+    max_score: float = 100.0
+
+
+class AssignmentCreate(AssignmentBase):
+    pass
+
+
+class AssignmentResponse(AssignmentBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+
+class SubmissionBase(BaseModel):
+    assignment_id: int
+    student_id: int
+
+
+class SubmissionCreate(SubmissionBase):
+    file_path: Optional[str] = None
+
+
+class SubmissionGrade(BaseModel):
+    grade: float
+    feedback: Optional[str] = None
+
+
+class SubmissionResponse(SubmissionBase):
+    id: int
+    file_path: Optional[str] = None
+    submitted_at: datetime
+    grade: Optional[float] = None
+    feedback: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class AuditLogResponse(BaseModel):
+    id: int
+    user_id: int
+    action: str
+    table_name: str
+    record_id: int
+    details: Optional[str] = None
+    timestamp: datetime
+
+    class Config:
+        from_attributes = True

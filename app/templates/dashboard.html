@@ -18,6 +18,7 @@
             <a href="/teacher/attendance" id="navAttendance" style="display:none;"><i class="bi bi-calendar-check me-2"></i> Attendance</a>
             <a href="/teacher/materials" id="navMaterials" style="display:none;"><i class="bi bi-file-earmark-arrow-up me-2"></i> Materials</a>
             <a href="/teacher/timetable" id="navTimetable" style="display:none;"><i class="bi bi-calendar3 me-2"></i> Timetable</a>
+            <a href="/parent/children" id="navChildren" style="display:none;"><i class="bi bi-person-heart me-2"></i> My Children</a>
             <a href="/results"><i class="bi bi-bar-chart me-2"></i> Results</a>
             <a href="/" onclick="localStorage.removeItem('token');localStorage.removeItem('user');"><i class="bi bi-box-arrow-right me-2"></i> Logout</a>
         </div>
@@ -75,6 +76,46 @@
                 </div>
             </div>
 
+            <div id="parentStats" style="display:none;">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card stat-card p-4 bg-info text-white">
+                            <h1 id="childCount">-</h1>
+                            <p>Children Enrolled</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card stat-card p-4 bg-warning text-white">
+                            <h1 id="pendingAlerts">0</h1>
+                            <p>New Notifications</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="studentStats" style="display:none;">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card stat-card p-4 bg-primary text-white">
+                            <h1 id="enrolledSubjects">-</h1>
+                            <p>Enrolled Subjects</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card stat-card p-4 bg-danger text-white">
+                            <h1 id="upcomingDeadlines">-</h1>
+                            <p>Pending Assignments</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card stat-card p-4 bg-success text-white">
+                            <h1 id="attendancePercent">-%</h1>
+                            <p>Attendance</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="row mt-4">
                 <div class="col-md-8">
                     <div class="card p-4 mb-4">
@@ -84,6 +125,15 @@
                         </h5>
                         <div id="announcementsList" class="mt-3">
                             <p class="text-muted">No announcements yet.</p>
+                        </div>
+                    </div>
+
+                    <div id="deadlinesSection" style="display:none;">
+                        <div class="card p-4 mb-4">
+                            <h5>Upcoming Deadlines</h5>
+                            <div id="deadlinesList" class="mt-3">
+                                <p class="text-muted">No pending assignments.</p>
+                            </div>
                         </div>
                     </div>
                     
@@ -149,6 +199,13 @@ if (user.role === 'admin') {
     document.getElementById('teacherStats').style.display = 'block';
     document.getElementById('timetableSection').style.display = 'block';
     document.getElementById('btnNewAnnouncement').style.display = 'block';
+} else if (user.role === 'parent') {
+    document.getElementById('navChildren').style.display = 'block';
+    document.getElementById('parentStats').style.display = 'block';
+} else if (user.role === 'student') {
+    document.getElementById('studentStats').style.display = 'block';
+    document.getElementById('deadlinesSection').style.display = 'block';
+    document.getElementById('timetableSection').style.display = 'block';
 }
 
 const api = axios.create({ baseURL: '', headers: { Authorization: `Bearer ${token}` } });
@@ -178,6 +235,15 @@ async function loadDashboard() {
                 api.get('/api/teacher/timetable')
             ]);
             document.getElementById('assignedSubjectsCount').textContent = assigned.data.length;
+            
+            // Add subject list with links to detail pages
+            const teacherStats = document.getElementById('teacherStats');
+            const subList = document.createElement('div');
+            subList.className = 'mt-3';
+            subList.innerHTML = '<h6>Your Subjects:</h6>' + assigned.data.map(s => `
+                <a href="/course/${s.id}" class="btn btn-sm btn-outline-light me-2 mb-2">${s.subject_name}</a>
+            `).join('');
+            teacherStats.appendChild(subList);
             document.getElementById('todayAttendanceCount').textContent = "View";
             document.getElementById('pendingMaterials').textContent = "Upload";
             
@@ -203,6 +269,18 @@ async function loadDashboard() {
             students.data.slice(0, 5).forEach(s => {
                 tbody1.innerHTML += `<tr><td>${s.student_id}</td><td>${s.name}</td><td>${s.class_id}</td></tr>`;
             });
+        } else if (user.role === 'parent') {
+            const res = await api.get('/api/parents/my-children');
+            document.getElementById('childCount').textContent = res.data.length;
+            document.getElementById('recentStudentsSection').style.display = 'none';
+        } else if (user.role === 'student') {
+            const [subs, deadlines] = await Promise.all([
+                api.get('/api/subjects'),
+                api.get('/api/lms/my-submissions') 
+            ]);
+            document.getElementById('enrolledSubjects').textContent = subs.data.length;
+            document.getElementById('upcomingDeadlines').textContent = "View";
+            document.getElementById('recentStudentsSection').style.display = 'none';
         }
 
         const exams = await api.get('/api/exams');

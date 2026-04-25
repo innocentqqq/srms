@@ -8,3 +8,5 @@ python-multipart
 jinja2
 gunicorn
 psycopg2-binary
+alembic
+boto3

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
 from app.models.student import Student, Class
-from app.models.academic import Exam, Mark, Subject
+from app.models.academic import Exam, Mark, Subject, GradeCategory, Assignment, Submission
 from app.models.user import User
 from app.api.auth import get_current_user, get_db
 from typing import List
@@ -10,6 +10,63 @@ import io
 from datetime import date
 
 router = APIRouter()
+
+
+def calculate_weighted_subject_grade(student_id: int, subject_id: int, db: Session) -> dict:
+    categories = db.query(GradeCategory).filter(GradeCategory.subject_id == subject_id).all()
+    if not categories:
+        return {"total_grade": 0, "gpa": 0, "breakdown": [], "details": "No categories defined"}
+    
+    total_weighted_grade = 0
+    cat_details = []
+    
+    for cat in categories:
+        # Get all assessments in this category
+        assignments = db.query(Assignment).filter(Assignment.category_id == cat.id).all()
+        exams = db.query(Exam).filter(Exam.category_id == cat.id).all()
+        
+        cat_scores = []
+        
+        # Collect assignment grades
+        for assign in assignments:
+            submission = db.query(Submission).filter(
+                Submission.assignment_id == assign.id,
+                Submission.student_id == student_id
+            ).first()
+            if submission and submission.grade is not None:
+                cat_scores.append((submission.grade / assign.max_score) * 100)
+                
+        # Collect exam marks
+        for exam in exams:
+            mark = db.query(Mark).filter(
+                Mark.exam_id == exam.id,
+                Mark.student_id == student_id,
+                Mark.subject_id == subject_id
+            ).first()
+            if mark:
+                cat_scores.append(mark.marks) 
+                
+        if cat_scores:
+            cat_avg = sum(cat_scores) / len(cat_scores)
+            weighted_contribution = cat_avg * cat.weight
+            total_weighted_grade += weighted_contribution
+            cat_details.append({
+                "category": cat.name,
+                "weight": cat.weight,
+                "average": round(cat_avg, 2),
+                "contribution": round(weighted_contribution, 2)
+            })
+            
+    return {
+        "total_grade": round(total_weighted_grade, 2),
+        "gpa": calculate_gpa(total_weighted_grade),
+        "breakdown": cat_details
+    }
+
+
+@router.get("/results/weighted/{student_id}/{subject_id}")
+def get_weighted_result(student_id: int, subject_id: int, db: Session = Depends(get_db)):
+    return calculate_weighted_subject_grade(student_id, subject_id, db)
 
 
 def calculate_gpa(marks: float) -> float:

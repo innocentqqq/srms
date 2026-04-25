@@ -1,7 +1,15 @@
-from sqlalchemy import Column, Integer, String, Date, ForeignKey
+from sqlalchemy import Column, Integer, String, Date, ForeignKey, Table
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 import time
+
+# Association table for many-to-many relationship between students and parents
+student_parents = Table(
+    "student_parents",
+    Base.metadata,
+    Column("student_id", Integer, ForeignKey("students.id"), primary_key=True),
+    Column("parent_id", Integer, ForeignKey("parents.id"), primary_key=True),
+)
 
 
 class Student(Base):
@@ -21,6 +29,8 @@ class Student(Base):
     user = relationship("User", back_populates="student")
     class_obj = relationship("Class", back_populates="students")
     marks = relationship("Mark", back_populates="student")
+    parents = relationship("Parent", secondary=student_parents, back_populates="students")
+    submissions = relationship("Submission", back_populates="student")
 
 
 class Class(Base):

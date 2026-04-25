@@ -9,6 +9,7 @@ class UserRole(str, enum.Enum):
     ADMIN = "admin"
     TEACHER = "teacher"
     STUDENT = "student"
+    PARENT = "parent"
 
 
 class User(Base):
@@ -24,6 +25,7 @@ class User(Base):
 
     student = relationship("Student", back_populates="user", uselist=False)
     teacher = relationship("Teacher", back_populates="user", uselist=False)
+    parent = relationship("Parent", back_populates="user", uselist=False)
 
 
 class Teacher(Base):
@@ -36,3 +38,15 @@ class Teacher(Base):
 
     user = relationship("User", back_populates="teacher")
     subject_assignments = relationship("SubjectAssignment", back_populates="teacher")
+
+
+class Parent(Base):
+    __tablename__ = "parents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    phone = Column(String)
+    address = Column(String, nullable=True)
+
+    user = relationship("User", back_populates="parent")
+    students = relationship("Student", secondary="student_parents", back_populates="parents")

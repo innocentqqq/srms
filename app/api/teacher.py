@@ -5,7 +5,7 @@ from datetime import date, datetime
 from app.api.auth import get_current_user, get_db
 from app.models.user import User, Teacher
 from app.models.student import Student, Class
-from app.models.academic import Subject, SubjectAssignment, Attendance, Announcement, Material, Timetable
+from app.models.academic import Subject, SubjectAssignment, Attendance, Announcement, Material, Timetable, CourseSection, Assignment, Submission, GradeCategory
 from app.schemas import (
     AttendanceCreate,
     AttendanceResponse,
@@ -18,6 +18,14 @@ from app.schemas import (
     ClassResponse,
     SubjectResponse,
     TeacherResponse,
+    CourseSectionCreate,
+    CourseSectionResponse,
+    AssignmentCreate,
+    AssignmentResponse,
+    SubmissionResponse,
+    SubmissionGrade,
+    GradeCategoryCreate,
+    GradeCategoryResponse,
 )
 
 router = APIRouter()
@@ -216,3 +224,71 @@ def delete_timetable(timetable_id: int, current_user: User = Depends(get_current
     db.delete(db_t)
     db.commit()
     return {"message": "Deleted"}
+
+# --- LMS EXTENSIONS ---
+
+# Course Sections
+@router.post("/sections", response_model=CourseSectionResponse)
+def create_section(section: CourseSectionCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if current_user.role not in ["teacher", "admin"]:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    db_section = CourseSection(**section.model_dump())
+    db.add(db_section)
+    db.commit()
+    db.refresh(db_section)
+    return db_section
+
+@router.get("/sections/{subject_id}", response_model=List[CourseSectionResponse])
+def get_sections(subject_id: int, db: Session = Depends(get_db)):
+    return db.query(CourseSection).filter(CourseSection.subject_id == subject_id).order_by(CourseSection.order).all()
+
+# Grade Categories
+@router.post("/grade-categories", response_model=GradeCategoryResponse)
+def create_grade_category(category: GradeCategoryCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if current_user.role not in ["teacher", "admin"]:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    db_cat = GradeCategory(**category.model_dump())
+    db.add(db_cat)
+    db.commit()
+    db.refresh(db_cat)
+    return db_cat
+
+@router.get("/grade-categories/{subject_id}", response_model=List[GradeCategoryResponse])
+def get_grade_categories(subject_id: int, db: Session = Depends(get_db)):
+    return db.query(GradeCategory).filter(GradeCategory.subject_id == subject_id).all()
+
+# Assignments
+@router.post("/assignments", response_model=AssignmentResponse)
+def create_assignment(assignment: AssignmentCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if current_user.role not in ["teacher", "admin"]:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    db_assignment = Assignment(**assignment.model_dump())
+    db.add(db_assignment)
+    db.commit()
+    db.refresh(db_assignment)
+    return db_assignment
+
+@router.get("/assignments/{subject_id}", response_model=List[AssignmentResponse])
+def get_assignments(subject_id: int, db: Session = Depends(get_db)):
+    return db.query(Assignment).filter(Assignment.subject_id == subject_id).all()
+
+# Grading
+@router.get("/submissions/{assignment_id}", response_model=List[SubmissionResponse])
+def get_submissions(assignment_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if current_user.role not in ["teacher", "admin"]:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    return db.query(Submission).filter(Submission.assignment_id == assignment_id).all()
+
+@router.put("/submissions/{submission_id}", response_model=SubmissionResponse)
+def grade_submission(submission_id: int, grade_data: SubmissionGrade, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if current_user.role not in ["teacher", "admin"]:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    db_submission = db.query(Submission).filter(Submission.id == submission_id).first()
+    if not db_submission:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    
+    db_submission.grade = grade_data.grade
+    db_submission.feedback = grade_data.feedback
+    db.commit()
+    db.refresh(db_submission)
+    return db_submission

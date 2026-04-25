@@ -72,6 +72,14 @@ def teacher_timetable(request: Request):
     return templates.TemplateResponse(request, "timetable.html")
 
 
+@router.get("/course/{subject_id}", response_class=HTMLResponse)
+def course_detail(request: Request, subject_id: int, db: Session = Depends(get_db)):
+    subject = db.query(Subject).filter(Subject.id == subject_id).first()
+    if not subject:
+        raise HTTPException(status_code=404, detail="Subject not found")
+    return templates.TemplateResponse(request, "course_detail.html", {"subject": subject})
+
+
 @router.get("/results", response_class=HTMLResponse)
 def results_page(request: Request):
     return templates.TemplateResponse(request, "results.html")

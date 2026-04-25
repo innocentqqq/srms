@@ -6,16 +6,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from app.core.database import engine, SessionLocal, Base
 from app.models import user, student, academic
-from app.api import auth, students, classes, subjects, exams, marks, results, teacher
+from app.api import auth, students, classes, subjects, exams, marks, results, teacher, parents, lms
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create tables if they don't exist
-    try:
-        Base.metadata.create_all(bind=engine)
-    except Exception as e:
-        print(f"Initial table creation error: {e}")
-
     # Automatic Seeding
     db: Session = SessionLocal()
     try:
@@ -70,6 +64,8 @@ app.include_router(exams.router, prefix="/api", tags=["Exams"])
 app.include_router(marks.router, prefix="/api", tags=["Marks"])
 app.include_router(results.router, prefix="/api", tags=["Results"])
 app.include_router(teacher.router, prefix="/api/teacher", tags=["Teacher"])
+app.include_router(parents.router, prefix="/api/parents", tags=["Parents"])
+app.include_router(lms.router, prefix="/api/lms", tags=["LMS"])
 
 from app.api import pages
 
