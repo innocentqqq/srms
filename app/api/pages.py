@@ -68,6 +68,11 @@ def admin_student_detail(request: Request, student_id: int, db: Session = Depend
     return templates.TemplateResponse(request, "student_detail.html", {"student": student})
 
 
+@router.get("/admin/parents", response_class=HTMLResponse)
+def admin_parents(request: Request):
+    return templates.TemplateResponse(request, "parents.html")
+
+
 @router.get("/teacher/marks", response_class=HTMLResponse)
 def teacher_marks(request: Request):
     return templates.TemplateResponse(request, "marks.html")

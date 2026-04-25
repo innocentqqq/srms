@@ -286,6 +286,23 @@ def link_parent_student(parent_id: int, student_id: int, db: Session = Depends(g
     return {"message": "Linked successfully"}
 
 
+@router.get("/me")
+def get_me(current_user: User = Depends(get_current_user)):
+    res = {
+        "id": current_user.id,
+        "email": current_user.email,
+        "username": current_user.username,
+        "full_name": current_user.full_name,
+        "role": current_user.role,
+    }
+    if current_user.role == "student" and current_user.student:
+        res["student_id"] = current_user.student.id
+        res["class_id"] = current_user.student.class_id
+    elif current_user.role == "teacher" and current_user.teacher:
+        res["teacher_id"] = current_user.teacher.id
+    return res
+
+
 @router.get("/seed")
 def seed_data(db: Session = Depends(get_db)):
     if db.query(User).first():

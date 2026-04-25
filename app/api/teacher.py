@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date, datetime
 from app.api.auth import get_current_user, get_db
-from app.models.user import User, Teacher
+from app.models.user import User, Teacher, Parent
 from app.models.student import Student, Class
 from app.models.academic import Subject, SubjectAssignment, Attendance, Announcement, Material, Timetable, CourseSection, Assignment, Submission, GradeCategory
 from app.schemas import (
@@ -18,6 +18,7 @@ from app.schemas import (
     ClassResponse,
     SubjectResponse,
     TeacherResponse,
+    ParentResponse,
     CourseSectionCreate,
     CourseSectionResponse,
     AssignmentCreate,
@@ -284,6 +285,24 @@ def get_submissions(assignment_id: int, current_user: User = Depends(get_current
     if current_user.role not in ["teacher", "admin"]:
         raise HTTPException(status_code=403, detail="Unauthorized")
     return db.query(Submission).filter(Submission.assignment_id == assignment_id).all()
+
+@router.get("/parents", response_model=List[ParentResponse])
+def get_parents(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    parents = db.query(Parent).all()
+    results = []
+    for p in parents:
+        results.append(ParentResponse(
+            id=p.id,
+            user_id=p.user_id,
+            phone=p.phone,
+            address=p.address,
+            full_name=p.user.full_name if p.user else "Unknown",
+            email=p.user.email if p.user else "Unknown"
+        ))
+    return results
+
 
 @router.put("/submissions/{submission_id}", response_model=SubmissionResponse)
 def grade_submission(submission_id: int, grade_data: SubmissionGrade, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):

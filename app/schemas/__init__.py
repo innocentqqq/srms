@@ -22,6 +22,9 @@ class UserLogin(BaseModel):
 class UserResponse(UserBase):
     id: int
     role: str
+    student_id: Optional[int] = None
+    teacher_id: Optional[int] = None
+    class_id: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -278,6 +281,8 @@ class ParentAccountCreate(ParentBase):
 class ParentResponse(ParentBase):
     id: int
     user_id: int
+    full_name: Optional[str] = None
+    email: Optional[str] = None
 
     class Config:
         from_attributes = True

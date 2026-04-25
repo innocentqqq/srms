@@ -19,15 +19,62 @@
     </style>
 </head>
 <body>
-    {% block content %}{% endblock %}
+    <div id="app-container">
+        {% block content %}{% endblock %}
+    </div>
+    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script>
+        // Global Auth & Sidebar Logic
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+        function updateSidebar() {
+            const role = user.role;
+            if (!role) return;
+
+            // Common elements
+            const navElements = {
+                admin: ['navTeachers', 'navStudents', 'navClasses', 'navSubjects', 'navExams'],
+                teacher: ['navMarks', 'navAttendance', 'navMaterials', 'navTimetable'],
+                student: ['navStudentAssignments', 'navResults'],
+                parent: ['navChildren']
+            };
+
+            // Show elements based on role
+            if (role === 'admin') {
+                // Admin sees EVERYTHING
+                Object.values(navElements).flat().forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.style.display = 'block';
+                });
+            } else if (role === 'teacher') {
+                navElements.teacher.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.style.display = 'block';
+                });
+            } else if (role === 'student') {
+                navElements.student.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.style.display = 'block';
+                });
+            } else if (role === 'parent') {
+                navElements.parent.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.style.display = 'block';
+                });
+            }
+        }
+
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/static/sw.js');
             });
         }
+        
+        // Run on every page load
+        document.addEventListener('DOMContentLoaded', updateSidebar);
     </script>
     {% block scripts %}{% endblock %}
 </body>
