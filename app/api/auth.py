@@ -144,8 +144,7 @@ def create_teacher_account(
         role="teacher",
     )
     db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
+    db.flush()
 
     db_teacher = Teacher(
         user_id=db_user.id,
@@ -155,6 +154,7 @@ def create_teacher_account(
     db.add(db_teacher)
     db.commit()
     db.refresh(db_teacher)
+    db.refresh(db_user)
 
     return TeacherResponse(
         id=db_teacher.id,
@@ -206,8 +206,7 @@ def create_student_account(
         role="student",
     )
     db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
+    db.flush()
 
     db_student = Student(
         user_id=db_user.id,

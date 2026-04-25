@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
 from app.models.student import Student, Class
+from app.models import academic
 from app.models.academic import Subject, Exam, Mark
 from app.models.user import User, Teacher
 from app.api.auth import get_current_user

@@ -22,7 +22,10 @@ def get_calendar_events(
     query = db.query(CalendarEvent)
     if current_user.role == "student":
         # Students see global events + their class events
-        query = query.filter((CalendarEvent.class_id == current_user.student.class_id) | (CalendarEvent.class_id == None))
+        if current_user.student:
+            query = query.filter((CalendarEvent.class_id == current_user.student.class_id) | (CalendarEvent.class_id == None))
+        else:
+            query = query.filter(CalendarEvent.class_id == None)
     elif current_user.role == "teacher":
         # Teachers see global events
         query = query.filter((CalendarEvent.class_id == None)) 
@@ -39,7 +42,7 @@ def get_calendar_events(
         })
 
     # 2. Fetch Assignments (Deadlines)
-    if current_user.role == "student":
+    if current_user.role == "student" and current_user.student and current_user.student.class_obj:
         assignments = db.query(Assignment).filter(Assignment.subject_id.in_(
             [s.id for s in current_user.student.class_obj.subjects]
         )).all()
@@ -56,7 +59,7 @@ def get_calendar_events(
 
     # 3. Fetch Exams
     exam_query = db.query(Exam)
-    if current_user.role == "student":
+    if current_user.role == "student" and current_user.student:
         exam_query = exam_query.filter(Exam.class_id == current_user.student.class_id)
     
     exams = exam_query.all()

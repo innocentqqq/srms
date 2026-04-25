@@ -6,6 +6,7 @@ from app.models.user import User
 from app.schemas import StudentCreate, StudentResponse, StudentUpdate
 from app.api.auth import get_current_user, get_db
 from typing import List
+import time
 
 router = APIRouter()
 
@@ -19,7 +20,7 @@ def create_student(
     if current_user.role not in ["admin", "teacher"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     db_student = Student(
-        **student.model_dump(), created_at=int(__import__("time").time())
+        **student.model_dump(), created_at=int(time.time())
     )
     db.add(db_student)
     db.commit()
