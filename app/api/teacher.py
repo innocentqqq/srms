@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date, datetime
 from app.api.auth import get_current_user, get_db
-from app.models.user import User, Teacher, Parent
+from app.models.user import User, Teacher
 from app.models.student import Student, Class
 from app.models.academic import Subject, SubjectAssignment, Attendance, Announcement, Material, Timetable, CourseSection, Assignment, Submission, GradeCategory
 from app.schemas import (
@@ -18,7 +18,6 @@ from app.schemas import (
     ClassResponse,
     SubjectResponse,
     TeacherResponse,
-    ParentResponse,
     CourseSectionCreate,
     CourseSectionResponse,
     AssignmentCreate,
@@ -72,8 +71,6 @@ def delete_teacher(
     return {"message": "Teacher and associated user account deleted"}
 
 
-# FR-T09: Teacher shall be able to view assigned classes.
-# FR-T10: Teacher shall be able to view assigned subjects/courses.
 @router.get("/assigned-subjects", response_model=List[SubjectResponse])
 def get_assigned_subjects(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if current_user.role == "admin":
@@ -91,7 +88,7 @@ def get_assigned_subjects(current_user: User = Depends(get_current_user), db: Se
     subjects = db.query(Subject).filter(Subject.id.in_(subject_ids)).all()
     return subjects
 
-# FR-T11: Teacher shall be able to view class roster/student list.
+
 @router.get("/class-students/{class_id}", response_model=List[dict])
 def get_class_students(class_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if current_user.role not in ["teacher", "admin"]:
@@ -100,7 +97,7 @@ def get_class_students(class_id: int, current_user: User = Depends(get_current_u
     students = db.query(Student).filter(Student.class_id == class_id).all()
     return [{"id": s.id, "name": s.name, "student_id": s.student_id} for s in students]
 
-# FR-T13: Teacher shall be able to mark daily attendance.
+
 @router.post("/attendance", response_model=List[AttendanceResponse])
 def mark_attendance(attendance_list: List[AttendanceCreate], current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if current_user.role != "teacher":
@@ -108,7 +105,6 @@ def mark_attendance(attendance_list: List[AttendanceCreate], current_user: User 
     
     db_attendance = []
     for att in attendance_list:
-        # Check if attendance already exists for this student on this date
         existing = db.query(Attendance).filter(
             Attendance.student_id == att.student_id,
             Attendance.date == att.date
@@ -128,7 +124,7 @@ def mark_attendance(attendance_list: List[AttendanceCreate], current_user: User 
         db.refresh(att)
     return db_attendance
 
-# FR-T16: Teacher shall be able to view attendance history per student/class.
+
 @router.get("/attendance/{class_id}", response_model=List[AttendanceResponse])
 def get_attendance(class_id: int, date: Optional[date] = None, db: Session = Depends(get_db)):
     query = db.query(Attendance).filter(Attendance.class_id == class_id)
@@ -136,7 +132,7 @@ def get_attendance(class_id: int, date: Optional[date] = None, db: Session = Dep
         query = query.filter(Attendance.date == date)
     return query.all()
 
-# FR-T33: Teacher shall be able to send announcements to classes.
+
 @router.post("/announcements", response_model=AnnouncementResponse)
 def create_announcement(announcement: AnnouncementCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if current_user.role not in ["teacher", "admin"]:
@@ -151,6 +147,7 @@ def create_announcement(announcement: AnnouncementCreate, current_user: User = D
     db.refresh(db_announcement)
     return db_announcement
 
+
 @router.get("/announcements", response_model=List[AnnouncementResponse])
 def get_announcements(class_id: Optional[int] = None, db: Session = Depends(get_db)):
     query = db.query(Announcement)
@@ -160,7 +157,7 @@ def get_announcements(class_id: Optional[int] = None, db: Session = Depends(get_
         query = query.filter(Announcement.class_id == None)
     return query.order_by(Announcement.created_at.desc()).all()
 
-# FR-T28: Teacher shall be able to upload learning materials.
+
 @router.post("/materials", response_model=MaterialResponse)
 def create_material(material: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if current_user.role != "teacher":
@@ -182,6 +179,7 @@ def create_material(material: dict, current_user: User = Depends(get_current_use
     db.refresh(db_material)
     return db_material
 
+
 @router.get("/materials/{subject_id}", response_model=List[MaterialResponse])
 def get_materials(subject_id: int, section_id: Optional[int] = None, db: Session = Depends(get_db)):
     query = db.query(Material).filter(Material.subject_id == subject_id)
@@ -189,7 +187,7 @@ def get_materials(subject_id: int, section_id: Optional[int] = None, db: Session
         query = query.filter(Material.section_id == section_id)
     return query.all()
 
-# FR-T37: Teacher shall be able to view teaching timetable.
+
 @router.get("/timetable", response_model=List[TimetableResponse])
 def get_teacher_timetable(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if current_user.role != "teacher":
@@ -201,9 +199,11 @@ def get_teacher_timetable(current_user: User = Depends(get_current_user), db: Se
     
     return db.query(Timetable).filter(Timetable.subject_id.in_(subject_ids)).all()
 
+
 @router.get("/timetable/class/{class_id}", response_model=List[TimetableResponse])
 def get_class_timetable(class_id: int, db: Session = Depends(get_db)):
     return db.query(Timetable).filter(Timetable.class_id == class_id).all()
+
 
 @router.post("/timetable", response_model=TimetableResponse)
 def create_timetable(timetable: TimetableCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -215,6 +215,7 @@ def create_timetable(timetable: TimetableCreate, current_user: User = Depends(ge
     db.commit()
     db.refresh(db_timetable)
     return db_timetable
+
 
 @router.delete("/timetable/{timetable_id}")
 def delete_timetable(timetable_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -229,9 +230,7 @@ def delete_timetable(timetable_id: int, current_user: User = Depends(get_current
     db.commit()
     return {"message": "Deleted"}
 
-# --- LMS EXTENSIONS ---
 
-# Course Sections
 @router.post("/sections", response_model=CourseSectionResponse)
 def create_section(section: CourseSectionCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if current_user.role not in ["teacher", "admin"]:
@@ -242,11 +241,12 @@ def create_section(section: CourseSectionCreate, current_user: User = Depends(ge
     db.refresh(db_section)
     return db_section
 
+
 @router.get("/sections/{subject_id}", response_model=List[CourseSectionResponse])
 def get_sections(subject_id: int, db: Session = Depends(get_db)):
     return db.query(CourseSection).filter(CourseSection.subject_id == subject_id).order_by(CourseSection.order).all()
 
-# Grade Categories
+
 @router.post("/grade-categories", response_model=GradeCategoryResponse)
 def create_grade_category(category: GradeCategoryCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if current_user.role not in ["teacher", "admin"]:
@@ -257,11 +257,12 @@ def create_grade_category(category: GradeCategoryCreate, current_user: User = De
     db.refresh(db_cat)
     return db_cat
 
+
 @router.get("/grade-categories/{subject_id}", response_model=List[GradeCategoryResponse])
 def get_grade_categories(subject_id: int, db: Session = Depends(get_db)):
     return db.query(GradeCategory).filter(GradeCategory.subject_id == subject_id).all()
 
-# Assignments
+
 @router.post("/assignments", response_model=AssignmentResponse)
 def create_assignment(assignment: AssignmentCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if current_user.role not in ["teacher", "admin"]:
@@ -272,6 +273,7 @@ def create_assignment(assignment: AssignmentCreate, current_user: User = Depends
     db.refresh(db_assignment)
     return db_assignment
 
+
 @router.get("/assignments/{subject_id}", response_model=List[AssignmentResponse])
 def get_assignments(subject_id: int, section_id: Optional[int] = None, db: Session = Depends(get_db)):
     query = db.query(Assignment).filter(Assignment.subject_id == subject_id)
@@ -279,29 +281,12 @@ def get_assignments(subject_id: int, section_id: Optional[int] = None, db: Sessi
         query = query.filter(Assignment.section_id == section_id)
     return query.all()
 
-# Grading
+
 @router.get("/submissions/{assignment_id}", response_model=List[SubmissionResponse])
 def get_submissions(assignment_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if current_user.role not in ["teacher", "admin"]:
         raise HTTPException(status_code=403, detail="Unauthorized")
     return db.query(Submission).filter(Submission.assignment_id == assignment_id).all()
-
-@router.get("/parents", response_model=List[ParentResponse])
-def get_parents(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Unauthorized")
-    parents = db.query(Parent).all()
-    results = []
-    for p in parents:
-        results.append(ParentResponse(
-            id=p.id,
-            user_id=p.user_id,
-            phone=p.phone,
-            address=p.address,
-            full_name=p.user.full_name if p.user else "Unknown",
-            email=p.user.email if p.user else "Unknown"
-        ))
-    return results
 
 
 @router.put("/submissions/{submission_id}", response_model=SubmissionResponse)

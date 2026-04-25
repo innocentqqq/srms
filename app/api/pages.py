@@ -1,19 +1,27 @@
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
-from app.models.user import User
 from app.models.student import Student, Class
-from app.models.academic import Exam, Mark, Subject
-from app.api.auth import get_current_user, get_db
+from app.models.academic import Subject, Exam, Mark, Teacher
+from app.models.user import User
+from app.api.auth import get_current_user
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
 @router.get("/", response_class=HTMLResponse)
-def home(request: Request):
+def index(request: Request):
     return templates.TemplateResponse(request, "index.html")
 
 
@@ -27,14 +35,14 @@ def dashboard(request: Request):
     return templates.TemplateResponse(request, "dashboard.html")
 
 
-@router.get("/admin/students", response_class=HTMLResponse)
-def admin_students(request: Request):
-    return templates.TemplateResponse(request, "students.html")
-
-
 @router.get("/admin/teachers", response_class=HTMLResponse)
 def admin_teachers(request: Request):
     return templates.TemplateResponse(request, "teachers.html")
+
+
+@router.get("/admin/students", response_class=HTMLResponse)
+def admin_students(request: Request):
+    return templates.TemplateResponse(request, "students.html")
 
 
 @router.get("/admin/classes", response_class=HTMLResponse)
@@ -68,11 +76,6 @@ def admin_student_detail(request: Request, student_id: int, db: Session = Depend
     return templates.TemplateResponse(request, "student_detail.html", {"student": student})
 
 
-@router.get("/admin/parents", response_class=HTMLResponse)
-def admin_parents(request: Request):
-    return templates.TemplateResponse(request, "parents.html")
-
-
 @router.get("/teacher/marks", response_class=HTMLResponse)
 def teacher_marks(request: Request):
     return templates.TemplateResponse(request, "marks.html")
@@ -101,11 +104,6 @@ def course_detail(request: Request, subject_id: int, db: Session = Depends(get_d
     return templates.TemplateResponse(request, "course_detail.html", {"subject": subject})
 
 
-@router.get("/parent/children", response_class=HTMLResponse)
-def parent_children_page(request: Request):
-    return templates.TemplateResponse(request, "parent_children.html")
-
-
 @router.get("/student/assignments", response_class=HTMLResponse)
 def student_assignments_page(request: Request):
     return templates.TemplateResponse(request, "student_assignments.html")
@@ -120,33 +118,34 @@ def results_page(request: Request):
 def report_card(
     request: Request, student_id: int, exam_id: int, db: Session = Depends(get_db)
 ):
-    from app.api.results import calculate_gpa
-
     student = db.query(Student).filter(Student.id == student_id).first()
     exam = db.query(Exam).filter(Exam.id == exam_id).first()
-    marks = (
-        db.query(Mark)
-        .filter(Mark.student_id == student_id, Mark.exam_id == exam_id)
-        .all()
-    )
+    if not student or not exam:
+        raise HTTPException(status_code=404, detail="Not found")
+
     class_obj = (
         db.query(Class).filter(Class.id == student.class_id).first()
         if student
         else None
     )
+    marks_query = (
+        db.query(Mark)
+        .filter(Mark.student_id == student_id, Mark.exam_id == exam_id)
+        .all()
+    )
 
-    total = sum([m.marks for m in marks])
-    avg = total / len(marks) if marks else 0
+    total = sum([m.marks for m in marks_query])
+    avg = total / len(marks_query) if marks_query else 0
+    # Assuming calculate_gpa is defined elsewhere or imported
+    from app.api.results import calculate_gpa
+
     gpa = calculate_gpa(avg)
 
     subjects_data = []
-    for m in marks:
+    for m in marks_query:
         subject = db.query(Subject).filter(Subject.id == m.subject_id).first()
         subjects_data.append(
-            {
-                "subject_name": subject.subject_name if subject else "Unknown",
-                "marks": m.marks,
-            }
+            {"name": subject.subject_name if subject else "Unknown", "marks": m.marks}
         )
 
     return templates.TemplateResponse(
