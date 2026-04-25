@@ -104,6 +104,10 @@ document.getElementById('studentForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
     const data = Object.fromEntries(formData);
+    
+    // Crucial Fix: Convert class_id to a number
+    if (data.class_id) data.class_id = parseInt(data.class_id);
+    
     try {
         await api.post('/api/admin/create-student', data);
         alert('Student account created!');
